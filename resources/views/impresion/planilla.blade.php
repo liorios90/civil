@@ -8,6 +8,7 @@
         $q = fn ($v) => $v === null || $v === '' ? '' : rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
         $c = $planilla->contrato;
     @endphp
+    <p class="no-print"><a href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a></p>
     <div class="cabecera centro">
         <h1>MUNICIPIO DEL DISTRITO METROPOLITANO DE QUITO</h1>
         <p>ADMINISTRACIÓN ZONAL NORTE "EUGENIO ESPEJO"</p>

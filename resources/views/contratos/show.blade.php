@@ -16,11 +16,13 @@
             <a class="btn" href="{{ route('inicio') }}">Contratos</a>
             @if ($planilla)
                 <a class="btn" href="{{ route('impresion.planilla', $planilla) }}" target="_blank">Imprimir planilla</a>
+                <a class="btn" href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a>
+                <a class="btn" href="{{ route('avance.comparacion', $planilla) }}">Comparar avance</a>
             @endif
         </div>
     </div>
     <div class="card">
-        <h2>Nueva plantilla</h2> 
+        <h2>Nueva plantilla</h2>
         <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
             @csrf
             <input name="nombre" value="{{ old('nombre', 'plantilla '.($contrato->frentes->count() + 1)) }}" required>

@@ -27,6 +27,8 @@ Route::delete('/rubros/{rubro}', [RubroController::class, 'destroy'])->name('rub
 
 Route::get('/ejecuciones/{ejecucion}/anexo', [AnexoController::class, 'show'])->name('anexos.show');
 Route::get('/planillas/{planilla}/imprimir', [ImpresionController::class, 'planilla'])->name('impresion.planilla');
+Route::get('/planillas/{planilla}/excel', [ImpresionController::class, 'excel'])->name('impresion.excel');
+Route::get('/planillas/{planilla}/avance', [ImpresionController::class, 'comparacion'])->name('avance.comparacion');
 Route::get('/ejecuciones/{ejecucion}/imprimir', [ImpresionController::class, 'anexo'])->name('impresion.anexo');
 Route::post('/ejecuciones/{ejecucion}/anexo/guardar', [AnexoController::class, 'guardar'])->name('anexos.guardar');
 Route::post('/ejecuciones/{ejecucion}/imagenes', [AnexoController::class, 'imagenes'])->name('anexos.imagenes');

@@ -78,21 +78,21 @@
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}"></td>
                                 <td>{{ $rubro->descripcion }}</td>
                                 <td>{{ $rubro->unidad }}</td>
-                                <td><input class="n" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></td>
-                                <td><input class="n" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></td>
-                                <td class="num">{{ $m($k['total_contratado']) }}</td>
-                                <td><input class="n" name="filas[{{ $i }}][cantidad_anterior]" value="{{ $q($k['cantidad_anterior']) }}"></td>
+                                <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></td>
+                                <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></td>
+                                <td class="num total-contratado">{{ $m($k['total_contratado']) }}</td>
+                                <td><input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]" value="{{ $q($k['cantidad_anterior']) }}"></td>
                                 <td>
                                     @if ($bloqueada)
-                                        <input class="n" value="{{ $q($k['cantidad_actual']) }}" readonly>
+                                        <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
                                     @else
-                                        <input class="n" name="filas[{{ $i }}][cantidad_actual]" value="{{ $q($k['cantidad_actual']) }}">
+                                        <input class="n actual" name="filas[{{ $i }}][cantidad_actual]" value="{{ $q($k['cantidad_actual']) }}">
                                     @endif
                                 </td>
-                                <td class="num">{{ $m($k['cantidad_total']) }}</td>
-                                <td class="num">{{ $m($k['valor_anterior']) }}</td>
-                                <td class="num">{{ $m($k['valor_actual']) }}</td>
-                                <td class="num">{{ $m($k['valor_total']) }}</td>
+                                <td class="num total-cantidad">{{ $m($k['cantidad_total']) }}</td>
+                                <td class="num valor-anterior">{{ $m($k['valor_anterior']) }}</td>
+                                <td class="num valor-actual">{{ $m($k['valor_actual']) }}</td>
+                                <td class="num valor-total">{{ $m($k['valor_total']) }}</td>
                                 <td>@if ($ejecucion)<a href="{{ route('anexos.show', $ejecucion) }}">Abrir</a>@endif</td>
                             </tr>
                         @empty
@@ -101,11 +101,11 @@
                         @if ($lineas !== [])
                             <tr class="cierre">
                                 <td colspan="5">Trabajos realizados</td>
-                                <td class="num">{{ $m($totales['contratado']) }}</td>
+                                <td class="num pie-contratado">{{ $m($totales['contratado']) }}</td>
                                 <td colspan="3"></td>
-                                <td class="num">{{ $m($totales['anterior']) }}</td>
-                                <td class="num">{{ $m($totales['actual']) }}</td>
-                                <td class="num">{{ $m($totales['acumulado']) }}</td>
+                                <td class="num pie-anterior">{{ $m($totales['anterior']) }}</td>
+                                <td class="num pie-actual">{{ $m($totales['actual']) }}</td>
+                                <td class="num pie-acumulado">{{ $m($totales['acumulado']) }}</td>
                                 <td></td>
                             </tr>
                         @endif
@@ -117,4 +117,40 @@
             <div class="barra"><button type="submit">Guardar</button></div>
         @endif
     </form>
+    <script>
+        const dinero = (valor) => (Math.round((valor + Number.EPSILON) * 100) / 100).toFixed(2);
+        const numero = (campo) => {
+            if (!campo) return 0;
+            const valor = parseFloat(String(campo.value).replace(',', '.'));
+            return Number.isFinite(valor) ? valor : 0;
+        };
+        const suma = (selector) => [...document.querySelectorAll(selector)].reduce((total, celda) => total + (parseFloat(celda.textContent) || 0), 0);
+        const recalcular = (fila) => {
+            const contratada = numero(fila.querySelector('.contratada'));
+            const unitario = numero(fila.querySelector('.unitario'));
+            const anterior = numero(fila.querySelector('.anterior'));
+            const actual = numero(fila.querySelector('.actual'));
+            const valorAnterior = anterior * unitario;
+            const valorActual = actual * unitario;
+            fila.querySelector('.total-contratado').textContent = dinero(contratada * unitario);
+            fila.querySelector('.total-cantidad').textContent = dinero(anterior + actual);
+            fila.querySelector('.valor-anterior').textContent = dinero(valorAnterior);
+            fila.querySelector('.valor-actual').textContent = dinero(valorActual);
+            fila.querySelector('.valor-total').textContent = dinero(valorAnterior + valorActual);
+            const pie = (selector, destino) => {
+                const celda = document.querySelector(destino);
+                if (celda) celda.textContent = dinero(suma(selector));
+            };
+            pie('.total-contratado', '.pie-contratado');
+            pie('.valor-anterior', '.pie-anterior');
+            pie('.valor-actual', '.pie-actual');
+            pie('.valor-total', '.pie-acumulado');
+        };
+        document.querySelectorAll('table.hoja tbody tr').forEach((fila) => {
+            if (!fila.querySelector('.contratada')) return;
+            fila.querySelectorAll('.contratada, .unitario, .anterior, .actual').forEach((campo) => {
+                campo.addEventListener('input', () => recalcular(fila));
+            });
+        });
+    </script>
 @endsection
