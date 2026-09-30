@@ -66,7 +66,7 @@ class ContratoController extends Controller
         $contrato->update($this->datos($request));
         $puedeReemplazar = $contrato->catalogo()->exists() || $catalogo->rubrosCompartidos($contrato);
         if ($request->exists('filas') && $puedeReemplazar) {
-            $catalogo->aplicarCatalogo($contrato, $this->filas($request), true);
+            $catalogo->aplicarCatalogo($contrato, $this->filas($request), false);
         }
 
         return redirect()->route('contratos.show', $contrato)->with('estado', 'Contrato actualizado.');

@@ -48,7 +48,7 @@
                     }
                 @endphp
                 <h2>Rubros del contrato</h2>
-                <p>Estos rubros se copian en cada frente general que crees.</p>
+                <p>Estos rubros se copian al crear una planilla. Después, cada planilla puede agregar o quitar los suyos.</p>
                 <div class="scroll">
                     <table class="hoja">
                         <thead>
@@ -72,7 +72,7 @@
                                     <td class="calc total"></td>
                                 </tr>
                             @endforeach
-                            @for ($n = 0; $n < ($filasRubro->isEmpty() ? 8 : 4); $n++)
+                            @for ($n = 0; $n < 3; $n++)
                                 @php($i = $filasRubro->count() + $n)
                                 <tr>
                                     <td class="num"></td>
@@ -86,12 +86,24 @@
                         </tbody>
                     </table>
                 </div>
+                <p><button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button></p>
+                <template id="fila-nueva">
+                    <tr>
+                        <td class="num"></td>
+                        <td><input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></td>
+                        <td><input class="u" name="filas[__i__][unidad]" placeholder="u"></td>
+                        <td><input class="n cant" name="filas[__i__][cantidad_contratada]"></td>
+                        <td><input class="n precio" name="filas[__i__][precio_unitario]"></td>
+                        <td class="calc total"></td>
+                    </tr>
+                </template>
             @endif
             <p><button type="submit">Guardar contrato</button></p>
         </form>
         @if ($editarRubros)
             <script>
-                document.querySelectorAll('table.hoja tbody tr').forEach((fila) => {
+                const tbody = document.querySelector('table.hoja tbody');
+                const enlazar = (fila) => {
                     const cant = fila.querySelector('.cant');
                     const precio = fila.querySelector('.precio');
                     const total = fila.querySelector('.total');
@@ -103,6 +115,22 @@
                     cant.addEventListener('input', pintar);
                     precio.addEventListener('input', pintar);
                     pintar();
+                };
+                tbody.querySelectorAll('tr').forEach(enlazar);
+                const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
+                    const coincidencia = campo.name.match(/filas\[(\d+)\]/);
+                    return coincidencia ? Number(coincidencia[1]) : -1;
+                });
+                let indice = Math.max(-1, ...indices) + 1;
+                document.getElementById('agregar-rubro').addEventListener('click', () => {
+                    const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('tr');
+                    fila.querySelectorAll('[name]').forEach((campo) => {
+                        campo.name = campo.name.replace('__i__', String(indice));
+                    });
+                    indice += 1;
+                    tbody.appendChild(fila);
+                    enlazar(fila);
+                    fila.querySelector('input')?.focus();
                 });
             </script>
         @endif

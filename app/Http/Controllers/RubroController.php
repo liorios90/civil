@@ -4,12 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Frente;
 use App\Models\Rubro;
-use App\Services\FrenteRubros;
 use Illuminate\Http\Request;
 
 class RubroController extends Controller
 {
-    public function guardar(Request $request, Frente $frente, FrenteRubros $catalogo)
+    public function guardar(Request $request, Frente $frente)
     {
         $filas = $request->validate([
             'filas' => ['nullable', 'array'],
@@ -38,15 +37,12 @@ class RubroController extends Controller
             }
 
             if ($descripcion === '') {
-                if ($existente) {
-                    $catalogo->reflejarEliminacion($frente, $existente->numero);
-                }
                 continue;
             }
 
             $datos = [
                 'descripcion' => $descripcion,
-                'unidad' => $fila['unidad'] ?: 'u',
+                'unidad' => ($fila['unidad'] ?? '') !== '' ? $fila['unidad'] : 'u',
                 'cantidad_contratada' => round((float) ($fila['cantidad_contratada'] ?? 0), 2),
                 'precio_unitario' => round((float) ($fila['precio_unitario'] ?? 0), 2),
                 'tipo_hoja' => ($fila['tipo_hoja'] ?? 'valores') === 'imagenes' ? 'imagenes' : 'valores',
@@ -55,10 +51,9 @@ class RubroController extends Controller
             if ($existente) {
                 $existente->update($datos);
                 $rubro = $existente;
-                $catalogo->reflejarDefinicion($rubro);
             } else {
-                $rubro = $frente->rubros()->create($datos + ['numero' => $catalogo->siguienteNumero($frente)]);
-                $catalogo->reflejarNuevo($rubro);
+                $numero = (int) $frente->rubros()->max('numero') + 1;
+                $rubro = $frente->rubros()->create($datos + ['numero' => $numero]);
             }
 
             $this->guardarCantidades($frente, $rubro, $fila);

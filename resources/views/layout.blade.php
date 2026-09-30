@@ -26,6 +26,7 @@
         .meta b { color: #4a5b6d; font-weight: 600; }
         a { color: #0b5cab; }
         button, .btn { background: #0f3d68; color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+        button.secundario { background: #e8eef5; color: #0f3d68; }
         input { border: 1px solid #c5d0db; border-radius: 6px; padding: 6px 8px; width: 100%; }
         .alerta { background: #fff4e5; border: 1px solid #f0d3a2; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
         .danger { background: transparent; color: #9b1c1c; padding: 0; }

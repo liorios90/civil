@@ -51,7 +51,7 @@
                             <th colspan="3">Contratado</th>
                             <th colspan="3">Cantidades ejecutadas</th>
                             <th colspan="3">Total en dólares</th>
-                            <th rowspan="2">Hoja</th>
+                            <th rowspan="2"></th>
                         </tr>
                         <tr>
                             <th>Cantidad</th>
@@ -76,8 +76,14 @@
                             @endphp
                             <tr>
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}"></td>
-                                <td>{{ $rubro->descripcion }}</td>
-                                <td>{{ $rubro->unidad }}</td>
+                                <td>
+                                    @if ($ejecucion)
+                                        <a href="{{ route('anexos.show', $ejecucion) }}">{{ $rubro->descripcion }}</a>
+                                    @else
+                                        {{ $rubro->descripcion }}
+                                    @endif
+                                </td>
+                                <td><input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></td>
                                 <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></td>
                                 <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></td>
                                 <td class="num total-contratado">{{ $m($k['total_contratado']) }}</td>
@@ -93,11 +99,29 @@
                                 <td class="num valor-anterior">{{ $m($k['valor_anterior']) }}</td>
                                 <td class="num valor-actual">{{ $m($k['valor_actual']) }}</td>
                                 <td class="num valor-total">{{ $m($k['valor_total']) }}</td>
-                                <td>@if ($ejecucion)<a href="{{ route('anexos.show', $ejecucion) }}">Abrir</a>@endif</td>
+                                <td><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></td>
                             </tr>
                         @empty
-                            <tr><td colspan="13">Este frente no tiene rubros. Defínelos en el contrato.</td></tr>
+                            <tr class="vacia"><td colspan="13">Esta planilla no tiene rubros. Agrega uno abajo.</td></tr>
                         @endforelse
+                        @for ($n = 0; $n < 3; $n++)
+                            @php($i = count($lineas) + $n)
+                            <tr>
+                                <td class="num"></td>
+                                <td><input name="filas[{{ $i }}][descripcion]" placeholder="Nuevo rubro"></td>
+                                <td><input class="u" name="filas[{{ $i }}][unidad]" placeholder="u"></td>
+                                <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]"></td>
+                                <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]"></td>
+                                <td class="num total-contratado">0.00</td>
+                                <td><input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]"></td>
+                                <td><input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></td>
+                                <td class="num total-cantidad">0.00</td>
+                                <td class="num valor-anterior">0.00</td>
+                                <td class="num valor-actual">0.00</td>
+                                <td class="num valor-total">0.00</td>
+                                <td></td>
+                            </tr>
+                        @endfor
                         @if ($lineas !== [])
                             <tr class="cierre">
                                 <td colspan="5">Trabajos realizados</td>
@@ -113,10 +137,34 @@
                 </table>
             </div>
         </div>
-        @if ($lineas !== [])
-            <div class="barra"><button type="submit">Guardar</button></div>
-        @endif
+        <div class="barra">
+            <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
+            <button type="submit">Guardar</button>
+        </div>
+        <template id="fila-nueva">
+            <tr>
+                <td class="num"></td>
+                <td><input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></td>
+                <td><input class="u" name="filas[__i__][unidad]" placeholder="u"></td>
+                <td><input class="n contratada" name="filas[__i__][cantidad_contratada]"></td>
+                <td><input class="n unitario" name="filas[__i__][precio_unitario]"></td>
+                <td class="num total-contratado">0.00</td>
+                <td><input class="n anterior" name="filas[__i__][cantidad_anterior]"></td>
+                <td><input class="n actual" name="filas[__i__][cantidad_actual]"></td>
+                <td class="num total-cantidad">0.00</td>
+                <td class="num valor-anterior">0.00</td>
+                <td class="num valor-actual">0.00</td>
+                <td class="num valor-total">0.00</td>
+                <td></td>
+            </tr>
+        </template>
     </form>
+    @foreach ($lineas as $linea)
+        <form id="quitar-rubro-{{ $linea['rubro']->id }}" method="post" action="{{ route('rubros.destroy', $linea['rubro']) }}" onsubmit="return confirm('¿Quitar este rubro de la planilla?')">
+            @csrf
+            @method('delete')
+        </form>
+    @endforeach
     <script>
         const dinero = (valor) => (Math.round((valor + Number.EPSILON) * 100) / 100).toFixed(2);
         const numero = (campo) => {
@@ -146,11 +194,31 @@
             pie('.valor-actual', '.pie-actual');
             pie('.valor-total', '.pie-acumulado');
         };
-        document.querySelectorAll('table.hoja tbody tr').forEach((fila) => {
+        const tbody = document.querySelector('table.hoja tbody');
+        const enlazar = (fila) => {
             if (!fila.querySelector('.contratada')) return;
             fila.querySelectorAll('.contratada, .unitario, .anterior, .actual').forEach((campo) => {
                 campo.addEventListener('input', () => recalcular(fila));
             });
+        };
+        tbody.querySelectorAll('tr').forEach(enlazar);
+        const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
+            const coincidencia = campo.name.match(/filas\[(\d+)\]/);
+            return coincidencia ? Number(coincidencia[1]) : -1;
+        });
+        let indice = Math.max(-1, ...indices) + 1;
+        document.getElementById('agregar-rubro').addEventListener('click', () => {
+            const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('tr');
+            fila.querySelectorAll('[name]').forEach((campo) => {
+                campo.name = campo.name.replace('__i__', String(indice));
+            });
+            indice += 1;
+            const cierre = tbody.querySelector('tr.cierre');
+            if (cierre) cierre.before(fila);
+            else tbody.appendChild(fila);
+            tbody.querySelector('tr.vacia')?.remove();
+            enlazar(fila);
+            fila.querySelector('input')?.focus();
         });
     </script>
 @endsection
