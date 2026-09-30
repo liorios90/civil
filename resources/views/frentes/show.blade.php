@@ -21,9 +21,97 @@
     @php
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+        $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
     @endphp
     <form method="post" action="{{ route('rubros.guardar', $frente) }}">
         @csrf
+        @if ($enAplicacion)
+            <h2>{{ $frente->nombre }}</h2>
+            <div data-lista>
+                @forelse ($lineas as $i => $linea)
+                    @php
+                        $rubro = $linea['rubro'];
+                        $ejecucion = $linea['ejecucion'];
+                        $k = $linea['calculo'];
+                        $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
+                        $bloqueada = $tieneHoja;
+                    @endphp
+                    <article class="ficha" data-fila>
+                        <div class="ficha-titulo">
+                            <span class="ficha-num">{{ $rubro->numero }}</span>
+                            @if ($ejecucion)
+                                <a href="{{ route('anexos.show', $ejecucion) }}">{{ $rubro->descripcion }}</a>
+                            @else
+                                <strong>{{ $rubro->descripcion }}</strong>
+                            @endif
+                            <input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}">
+                        </div>
+                        <p><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></p>
+                        <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></label>
+                        <h3>Contratado</h3>
+                        <div class="pares">
+                            <label>Cantidad<input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></label>
+                            <label>Unitario<input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></label>
+                        </div>
+                        <p class="resultado">Total contratado <b class="total-contratado">{{ $m($k['total_contratado']) }}</b></p>
+                        <h3>Cantidades ejecutadas</h3>
+                        <div class="pares">
+                            <label>Anterior<input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]" value="{{ $q($k['cantidad_anterior']) }}"></label>
+                            <label>Actual
+                                @if ($bloqueada)
+                                    <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
+                                @else
+                                    <input class="n actual" name="filas[{{ $i }}][cantidad_actual]" value="{{ $q($k['cantidad_actual']) }}">
+                                @endif
+                            </label>
+                        </div>
+                        <p class="resultado">Total cantidad <b class="total-cantidad">{{ $m($k['cantidad_total']) }}</b></p>
+                        <h3>Total en dólares</h3>
+                        <div class="pares">
+                            <p class="resultado">Anterior <b class="valor-anterior">{{ $m($k['valor_anterior']) }}</b></p>
+                            <p class="resultado">Actual <b class="valor-actual">{{ $m($k['valor_actual']) }}</b></p>
+                        </div>
+                        <p class="resultado">Total <b class="valor-total">{{ $m($k['valor_total']) }}</b></p>
+                    </article>
+                @empty
+                    <p class="vacia">Esta planilla no tiene rubros. Agrega uno abajo.</p>
+                @endforelse
+                @for ($n = 0; $n < 1; $n++)
+                    @php $i = count($lineas) + $n; @endphp
+                    <article class="ficha" data-fila>
+                        <label>Descripción<input name="filas[{{ $i }}][descripcion]" placeholder="Nuevo rubro"></label>
+                        <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" placeholder="u"></label>
+                        <h3>Contratado</h3>
+                        <div class="pares">
+                            <label>Cantidad<input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]"></label>
+                            <label>Unitario<input class="n unitario" name="filas[{{ $i }}][precio_unitario]"></label>
+                        </div>
+                        <p class="resultado">Total contratado <b class="total-contratado">0.00</b></p>
+                        <h3>Cantidades ejecutadas</h3>
+                        <div class="pares">
+                            <label>Anterior<input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]"></label>
+                            <label>Actual<input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></label>
+                        </div>
+                        <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
+                        <h3>Total en dólares</h3>
+                        <div class="pares">
+                            <p class="resultado">Anterior <b class="valor-anterior">0.00</b></p>
+                            <p class="resultado">Actual <b class="valor-actual">0.00</b></p>
+                        </div>
+                        <p class="resultado">Total <b class="valor-total">0.00</b></p>
+                    </article>
+                @endfor
+                @if ($lineas !== [])
+                    <article class="ficha cierre-ficha" data-cierre>
+                        <h3>Trabajos realizados</h3>
+                        <p>Contratado <b class="pie-contratado">{{ $m($totales['contratado']) }}</b></p>
+                        <p>Anterior <b class="pie-anterior">{{ $m($totales['anterior']) }}</b></p>
+                        <p>Actual <b class="pie-actual">{{ $m($totales['actual']) }}</b></p>
+                        <p>Total <b class="pie-acumulado">{{ $m($totales['acumulado']) }}</b></p>
+                    </article>
+                @endif
+            </div>
+        @else
         <div class="card">
             <h2>{{ $frente->nombre }}</h2>
             <div class="scroll ajustada">
@@ -65,7 +153,7 @@
                             <th>Total</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody data-lista>
                         @forelse ($lineas as $i => $linea)
                             @php
                                 $rubro = $linea['rubro'];
@@ -74,7 +162,7 @@
                                 $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
                                 $bloqueada = $tieneHoja;
                             @endphp
-                            <tr>
+                            <tr data-fila>
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}"></td>
                                 <td>
                                     @if ($ejecucion)
@@ -105,8 +193,8 @@
                             <tr class="vacia"><td colspan="13">Esta planilla no tiene rubros. Agrega uno abajo.</td></tr>
                         @endforelse
                         @for ($n = 0; $n < 3; $n++)
-                            @php($i = count($lineas) + $n)
-                            <tr>
+                            @php $i = count($lineas) + $n; @endphp
+                            <tr data-fila>
                                 <td class="num"></td>
                                 <td><input name="filas[{{ $i }}][descripcion]" placeholder="Nuevo rubro"></td>
                                 <td><input class="u" name="filas[{{ $i }}][unidad]" placeholder="u"></td>
@@ -123,7 +211,7 @@
                             </tr>
                         @endfor
                         @if ($lineas !== [])
-                            <tr class="cierre">
+                            <tr class="cierre" data-cierre>
                                 <td colspan="5">Trabajos realizados</td>
                                 <td class="num pie-contratado">{{ $m($totales['contratado']) }}</td>
                                 <td colspan="3"></td>
@@ -137,26 +225,52 @@
                 </table>
             </div>
         </div>
+        @endif
         <div class="barra">
             <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
             <button type="submit">Guardar</button>
         </div>
         <template id="fila-nueva">
-            <tr>
-                <td class="num"></td>
-                <td><input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></td>
-                <td><input class="u" name="filas[__i__][unidad]" placeholder="u"></td>
-                <td><input class="n contratada" name="filas[__i__][cantidad_contratada]"></td>
-                <td><input class="n unitario" name="filas[__i__][precio_unitario]"></td>
-                <td class="num total-contratado">0.00</td>
-                <td><input class="n anterior" name="filas[__i__][cantidad_anterior]"></td>
-                <td><input class="n actual" name="filas[__i__][cantidad_actual]"></td>
-                <td class="num total-cantidad">0.00</td>
-                <td class="num valor-anterior">0.00</td>
-                <td class="num valor-actual">0.00</td>
-                <td class="num valor-total">0.00</td>
-                <td></td>
-            </tr>
+            @if ($enAplicacion)
+                <article class="ficha" data-fila>
+                    <label>Descripción<input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></label>
+                    <label>Unidad<input class="u" name="filas[__i__][unidad]" placeholder="u"></label>
+                    <h3>Contratado</h3>
+                    <div class="pares">
+                        <label>Cantidad<input class="n contratada" name="filas[__i__][cantidad_contratada]"></label>
+                        <label>Unitario<input class="n unitario" name="filas[__i__][precio_unitario]"></label>
+                    </div>
+                    <p class="resultado">Total contratado <b class="total-contratado">0.00</b></p>
+                    <h3>Cantidades ejecutadas</h3>
+                    <div class="pares">
+                        <label>Anterior<input class="n anterior" name="filas[__i__][cantidad_anterior]"></label>
+                        <label>Actual<input class="n actual" name="filas[__i__][cantidad_actual]"></label>
+                    </div>
+                    <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
+                    <h3>Total en dólares</h3>
+                    <div class="pares">
+                        <p class="resultado">Anterior <b class="valor-anterior">0.00</b></p>
+                        <p class="resultado">Actual <b class="valor-actual">0.00</b></p>
+                    </div>
+                    <p class="resultado">Total <b class="valor-total">0.00</b></p>
+                </article>
+            @else
+                <tr data-fila>
+                    <td class="num"></td>
+                    <td><input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></td>
+                    <td><input class="u" name="filas[__i__][unidad]" placeholder="u"></td>
+                    <td><input class="n contratada" name="filas[__i__][cantidad_contratada]"></td>
+                    <td><input class="n unitario" name="filas[__i__][precio_unitario]"></td>
+                    <td class="num total-contratado">0.00</td>
+                    <td><input class="n anterior" name="filas[__i__][cantidad_anterior]"></td>
+                    <td><input class="n actual" name="filas[__i__][cantidad_actual]"></td>
+                    <td class="num total-cantidad">0.00</td>
+                    <td class="num valor-anterior">0.00</td>
+                    <td class="num valor-actual">0.00</td>
+                    <td class="num valor-total">0.00</td>
+                    <td></td>
+                </tr>
+            @endif
         </template>
     </form>
     @foreach ($lineas as $linea)
@@ -194,29 +308,29 @@
             pie('.valor-actual', '.pie-actual');
             pie('.valor-total', '.pie-acumulado');
         };
-        const tbody = document.querySelector('table.hoja tbody');
+        const lista = document.querySelector('[data-lista]');
         const enlazar = (fila) => {
             if (!fila.querySelector('.contratada')) return;
             fila.querySelectorAll('.contratada, .unitario, .anterior, .actual').forEach((campo) => {
                 campo.addEventListener('input', () => recalcular(fila));
             });
         };
-        tbody.querySelectorAll('tr').forEach(enlazar);
+        lista.querySelectorAll('[data-fila]').forEach(enlazar);
         const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
             const coincidencia = campo.name.match(/filas\[(\d+)\]/);
             return coincidencia ? Number(coincidencia[1]) : -1;
         });
         let indice = Math.max(-1, ...indices) + 1;
         document.getElementById('agregar-rubro').addEventListener('click', () => {
-            const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('tr');
+            const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('[data-fila]');
             fila.querySelectorAll('[name]').forEach((campo) => {
                 campo.name = campo.name.replace('__i__', String(indice));
             });
             indice += 1;
-            const cierre = tbody.querySelector('tr.cierre');
+            const cierre = lista.querySelector('[data-cierre]');
             if (cierre) cierre.before(fila);
-            else tbody.appendChild(fila);
-            tbody.querySelector('tr.vacia')?.remove();
+            else lista.appendChild(fila);
+            lista.querySelector('.vacia')?.remove();
             enlazar(fila);
             fila.querySelector('input')?.focus();
         });

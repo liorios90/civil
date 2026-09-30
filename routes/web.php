@@ -32,6 +32,7 @@ Route::get('/planillas/{planilla}/avance', [ImpresionController::class, 'compara
 Route::get('/ejecuciones/{ejecucion}/imprimir', [ImpresionController::class, 'anexo'])->name('impresion.anexo');
 Route::post('/ejecuciones/{ejecucion}/anexo/guardar', [AnexoController::class, 'guardar'])->name('anexos.guardar');
 Route::post('/ejecuciones/{ejecucion}/imagenes', [AnexoController::class, 'imagenes'])->name('anexos.imagenes');
+Route::get('/archivos/{ruta}', [AnexoController::class, 'archivo'])->where('ruta', '.*')->name('archivos.publicos');
 Route::delete('/ejecuciones/{ejecucion}/imagenes/{imagen}', [AnexoController::class, 'destroyImagen'])->name('anexos.imagenes.destroy');
 Route::post('/ejecuciones/{ejecucion}/anexo', [AnexoController::class, 'store'])->name('anexos.store');
 Route::delete('/ejecuciones/{ejecucion}/lineas/{linea}', [AnexoController::class, 'destroy'])->name('anexos.destroy');

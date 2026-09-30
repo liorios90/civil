@@ -136,6 +136,16 @@ class AnexoController extends Controller
         return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Imágenes guardadas.');
     }
 
+    public function archivo(string $ruta)
+    {
+        $ruta = ltrim(str_replace('\\', '/', $ruta), '/');
+        if ($ruta === '' || str_contains($ruta, '..') || ! Storage::disk('public')->exists($ruta)) {
+            abort(404);
+        }
+
+        return Storage::disk('public')->response($ruta);
+    }
+
     public function destroyImagen(PlanillaRubro $ejecucion, AnexoImagen $imagen)
     {
         abort_unless($imagen->anexo->planilla_rubro_id === $ejecucion->id, 404);

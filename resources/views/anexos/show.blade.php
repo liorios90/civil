@@ -33,7 +33,7 @@
     <div class="galeria">
         @forelse ($imagenesIniciales as $imagen)
             <figure>
-                <img src="{{ asset('storage/'.$imagen->ruta) }}" alt="Imagen">
+                <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Imagen">
                 <form method="post" action="{{ route('anexos.imagenes.destroy', [$ejecucion, $imagen]) }}">
                     @csrf
                     @method('delete')
@@ -116,7 +116,7 @@
     <div class="galeria">
         @forelse ($imagenesOtras as $imagen)
             <figure>
-                <img src="{{ asset('storage/'.$imagen->ruta) }}" alt="Otra imagen">
+                <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Otra imagen">
                 <form method="post" action="{{ route('anexos.imagenes.destroy', [$ejecucion, $imagen]) }}">
                     @csrf
                     @method('delete')

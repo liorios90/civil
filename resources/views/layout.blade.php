@@ -65,9 +65,25 @@
         .galeria { display: flex; flex-wrap: wrap; gap: 12px; }
         .galeria figure { margin: 0; background: #fff; border: 1px solid #d5dde5; padding: 8px; }
         .galeria img { width: 180px; height: 140px; object-fit: cover; display: block; }
+        body.aplicacion main { padding: 12px; }
+        body.aplicacion header .btn { float: none; display: inline-block; margin-top: 10px; }
+        body.aplicacion .fila { flex-wrap: wrap; }
+        body.aplicacion .ficha { background: #fff; border: 1px solid #d5dde5; border-radius: 10px; padding: 12px; margin: 0 0 12px; }
+        body.aplicacion .ficha-titulo { display: flex; gap: 8px; align-items: flex-start; }
+        body.aplicacion .ficha-titulo a, body.aplicacion .ficha-titulo strong { flex: 1; font-size: 16px; line-height: 1.3; }
+        body.aplicacion .ficha-num { background: #1f4e79; color: #fff; border-radius: 6px; min-width: 28px; padding: 2px 8px; text-align: center; font-size: 13px; }
+        body.aplicacion .ficha h3 { margin: 14px 0 8px; font-size: 13px; color: #1f4e79; }
+        body.aplicacion .pares { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        body.aplicacion .pares label, body.aplicacion .ficha > label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4a5b6d; }
+        body.aplicacion .resultado { background: #eef3ea; border-radius: 6px; padding: 8px; font-size: 13px; }
+        body.aplicacion .cierre-ficha { background: #fff8e8; }
+        body.aplicacion .cierre-ficha p { display: flex; justify-content: space-between; margin: 6px 0; }
+        body.aplicacion input[readonly] { background: #f4f1e8; }
+        body.aplicacion .barra { display: flex; gap: 8px; }
+        body.aplicacion .barra button { flex: 1; }
     </style>
 </head>
-<body>
+<body @class(['aplicacion' => str_contains((string) request()->userAgent(), 'PlanillasApp')])>
 <header>
     <a href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
     <a class="btn" href="{{ route('contratos.create') }}" style="float:right">Nuevo contrato</a>

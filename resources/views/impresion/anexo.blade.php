@@ -31,7 +31,7 @@
         <p><b>Imágenes</b></p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">
             @foreach ($imagenesIniciales as $imagen)
-                <img src="{{ asset('storage/'.$imagen->ruta) }}" alt="Imagen" style="width:220px;height:160px;object-fit:cover;border:1px solid #000">
+                <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Imagen" style="width:220px;height:160px;object-fit:cover;border:1px solid #000">
             @endforeach
         </div>
     @endif
@@ -78,7 +78,7 @@
         <p><b>Otras imágenes</b></p>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
             @foreach ($imagenesOtras as $imagen)
-                <img src="{{ asset('storage/'.$imagen->ruta) }}" alt="Otra imagen" style="width:220px;height:160px;object-fit:cover;border:1px solid #000">
+                <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Otra imagen" style="width:220px;height:160px;object-fit:cover;border:1px solid #000">
             @endforeach
         </div>
     @endif
