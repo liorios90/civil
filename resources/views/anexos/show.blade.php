@@ -45,8 +45,81 @@
         @endforelse
     </div>
 
+    @php
+        $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
+    @endphp
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}">
         @csrf
+        @if ($enAplicacion)
+            @php
+                $filasMovil = $anexo->lineas->values();
+            @endphp
+            <h2>Mediciones</h2>
+            <div data-lista>
+                @foreach ($filasMovil as $i => $linea)
+                    <article class="ficha" data-medicion>
+                        <span class="ficha-num">{{ $i + 1 }}</span>
+                        <label>Descripción<input name="lineas[{{ $i }}][descripcion]" value="{{ $linea->descripcion }}"></label>
+                        <h3>Dimensiones</h3>
+                        <div class="pares">
+                            <label>Base 1<input class="n dim b1" name="lineas[{{ $i }}][base1]" value="{{ $linea->base1 !== null ? $linea->base1 + 0 : '' }}"></label>
+                            <label>Base 2<input class="n dim b2" name="lineas[{{ $i }}][base2]" value="{{ $linea->base2 !== null ? $linea->base2 + 0 : '' }}"></label>
+                            <label>Altura<input class="n dim altura" name="lineas[{{ $i }}][altura]" value="{{ $linea->altura !== null ? $linea->altura + 0 : '' }}"></label>
+                            <label>Número<input class="n dim numero" name="lineas[{{ $i }}][numero]" value="{{ $linea->numero !== null ? $linea->numero + 0 : '' }}"></label>
+                        </div>
+                        <h3>Subtotales</h3>
+                        <div class="pares">
+                            <p class="resultado">Longitud <b class="calc longitud">{{ $linea->longitud !== null ? number_format((float) $linea->longitud, 2, '.', '') : '' }}</b></p>
+                            <p class="resultado">Área <b class="calc area">{{ $linea->area !== null ? number_format((float) $linea->area, 2, '.', '') : '' }}</b></p>
+                            <p class="resultado">Volumen <b class="calc volumen">{{ $linea->volumen !== null ? number_format((float) $linea->volumen, 2, '.', '') : '' }}</b></p>
+                        </div>
+                        <label>Total<input class="n total" name="lineas[{{ $i }}][total]" value="{{ number_format((float) $linea->total, 2, '.', '') }}"></label>
+                    </article>
+                @endforeach
+                @php
+                    $i = $filasMovil->count();
+                @endphp
+                <article class="ficha" data-medicion>
+                    <span class="ficha-num">{{ $i + 1 }}</span>
+                    <label>Descripción<input name="lineas[{{ $i }}][descripcion]" placeholder="Nueva medición"></label>
+                    <h3>Dimensiones</h3>
+                    <div class="pares">
+                        <label>Base 1<input class="n dim b1" name="lineas[{{ $i }}][base1]"></label>
+                        <label>Base 2<input class="n dim b2" name="lineas[{{ $i }}][base2]"></label>
+                        <label>Altura<input class="n dim altura" name="lineas[{{ $i }}][altura]"></label>
+                        <label>Número<input class="n dim numero" name="lineas[{{ $i }}][numero]"></label>
+                    </div>
+                    <h3>Subtotales</h3>
+                    <div class="pares">
+                        <p class="resultado">Longitud <b class="calc longitud"></b></p>
+                        <p class="resultado">Área <b class="calc area"></b></p>
+                        <p class="resultado">Volumen <b class="calc volumen"></b></p>
+                    </div>
+                    <label>Total<input class="n total" name="lineas[{{ $i }}][total]"></label>
+                </article>
+            </div>
+            <p><button type="button" class="secundario" id="agregar-medicion">Agregar medición</button></p>
+            <template id="medicion-nueva">
+                <article class="ficha" data-medicion>
+                    <span class="ficha-num"></span>
+                    <label>Descripción<input name="lineas[__i__][descripcion]" placeholder="Nueva medición"></label>
+                    <h3>Dimensiones</h3>
+                    <div class="pares">
+                        <label>Base 1<input class="n dim b1" name="lineas[__i__][base1]"></label>
+                        <label>Base 2<input class="n dim b2" name="lineas[__i__][base2]"></label>
+                        <label>Altura<input class="n dim altura" name="lineas[__i__][altura]"></label>
+                        <label>Número<input class="n dim numero" name="lineas[__i__][numero]"></label>
+                    </div>
+                    <h3>Subtotales</h3>
+                    <div class="pares">
+                        <p class="resultado">Longitud <b class="calc longitud"></b></p>
+                        <p class="resultado">Área <b class="calc area"></b></p>
+                        <p class="resultado">Volumen <b class="calc volumen"></b></p>
+                    </div>
+                    <label>Total<input class="n total" name="lineas[__i__][total]"></label>
+                </article>
+            </template>
+        @else
         <div class="card">
             <h2>Mediciones</h2>
             <div class="scroll">
@@ -101,6 +174,7 @@
                 </table>
             </div>
         </div>
+        @endif
         <div class="barra"><button type="submit">Guardar mediciones</button></div>
     </form>
 
@@ -158,5 +232,50 @@
             [b1, b2, altura, numero].forEach((campo) => campo.addEventListener('input', pintar));
             total.addEventListener('input', () => { total.dataset.manual = '1'; });
         });
+        const enlazarMedicion = (fila) => {
+            const b1 = fila.querySelector('.b1');
+            const b2 = fila.querySelector('.b2');
+            const altura = fila.querySelector('.altura');
+            const numero = fila.querySelector('.numero');
+            const total = fila.querySelector('.total');
+            if (!b1 || !total) return;
+            const pintar = () => {
+                const base1 = valor(b1);
+                const base2 = valor(b2);
+                const alto = valor(altura);
+                const veces = valor(numero);
+                const factor = veces === null ? 1 : veces;
+                const longitud = base1 === null ? null : base1 * factor;
+                let area = null;
+                if (base1 !== null && base2 !== null) area = base1 * base2 * factor;
+                else if (base1 !== null && alto !== null) area = base1 * alto * factor;
+                const volumen = (base1 !== null && base2 !== null && alto !== null) ? base1 * base2 * alto * factor : null;
+                fila.querySelector('.longitud').textContent = texto(longitud);
+                fila.querySelector('.area').textContent = texto(area);
+                fila.querySelector('.volumen').textContent = texto(volumen);
+                if (total.dataset.manual === '1') return;
+                const elegido = volumen ?? area ?? longitud ?? veces;
+                total.value = elegido === null ? '' : texto(elegido);
+            };
+            [b1, b2, altura, numero].forEach((campo) => campo.addEventListener('input', pintar));
+            total.addEventListener('input', () => { total.dataset.manual = '1'; });
+        };
+        const listaMediciones = document.querySelector('[data-lista]');
+        const botonMedicion = document.getElementById('agregar-medicion');
+        if (listaMediciones && botonMedicion) {
+            listaMediciones.querySelectorAll('[data-medicion]').forEach(enlazarMedicion);
+            let indiceMedicion = listaMediciones.querySelectorAll('[data-medicion]').length;
+            botonMedicion.addEventListener('click', () => {
+                const fila = document.getElementById('medicion-nueva').content.cloneNode(true).querySelector('[data-medicion]');
+                fila.querySelectorAll('[name]').forEach((campo) => {
+                    campo.name = campo.name.replace('__i__', String(indiceMedicion));
+                });
+                indiceMedicion += 1;
+                fila.querySelector('.ficha-num').textContent = String(indiceMedicion);
+                listaMediciones.appendChild(fila);
+                enlazarMedicion(fila);
+                fila.querySelector('input')?.focus();
+            });
+        }
     </script>
 @endsection
