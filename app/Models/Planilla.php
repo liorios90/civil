@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtegidoPorEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Planilla extends Model
 {
+    use ProtegidoPorEmpresa;
     protected $fillable = [
         'contrato_id', 'numero', 'periodo_desde', 'periodo_hasta',
         'estado', 'iva_porcentaje', 'descuentos', 'multas',
@@ -27,6 +29,11 @@ class Planilla extends Model
     public function contrato(): BelongsTo
     {
         return $this->belongsTo(Contrato::class);
+    }
+
+    public function contratoParaAcceso(): ?Contrato
+    {
+        return $this->contrato;
     }
 
     public function ejecuciones(): HasMany

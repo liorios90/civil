@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtegidoPorEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MedicionLinea extends Model
 {
+    use ProtegidoPorEmpresa;
     protected $fillable = [
         'anexo_id', 'orden', 'descripcion', 'base1', 'base2', 'altura', 'numero',
         'longitud', 'area', 'volumen', 'total',
@@ -29,5 +31,10 @@ class MedicionLinea extends Model
     public function anexo(): BelongsTo
     {
         return $this->belongsTo(Anexo::class);
+    }
+
+    public function contratoParaAcceso(): ?Contrato
+    {
+        return $this->anexo?->planillaRubro?->planilla?->contrato;
     }
 }

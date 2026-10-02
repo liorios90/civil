@@ -10,7 +10,7 @@
         body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f4f6f8; color: #1c2430; }
         header { background: #0f3d68; color: #fff; padding: 16px 24px; }
         header a { color: #fff; text-decoration: none; }
-        header small { display: block; opacity: .8; margin-top: 4px; }
+        header small { display: block; clear: both; opacity: .8; margin-top: 4px; }
         main { padding: 24px; }
         .card { background: #fff; border: 1px solid #d9e0e7; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
@@ -28,6 +28,10 @@
         button, .btn { background: #0f3d68; color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; text-decoration: none; display: inline-block; }
         button.secundario, a.secundario { background: #e8eef5; color: #0f3d68; }
         input { border: 1px solid #c5d0db; border-radius: 6px; padding: 6px 8px; width: 100%; }
+        input[type="checkbox"] { width: auto; }
+        label.check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; }
+        .cabecera-acciones { float: right; display: flex; gap: 8px; align-items: center; }
+        .cabecera-acciones form { margin: 0; }
         .alerta { background: #fff4e5; border: 1px solid #f0d3a2; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
         .buscar { margin: 0 0 10px; }
         .buscar input { max-width: 420px; }
@@ -90,8 +94,24 @@
 <body @class(['aplicacion' => str_contains((string) request()->userAgent(), 'PlanillasApp')])>
 <header>
     <a href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
-    <a class="btn" href="{{ route('contratos.create') }}" style="float:right">Nuevo contrato</a>
-    <small>GAD del Distrito Metropolitano de Quito</small>
+    @auth
+        <div class="cabecera-acciones">
+            @if (auth()->user()->esAdministrador())
+                <a class="btn" href="{{ route('usuarios.index') }}">Usuarios</a>
+                <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
+            @endif
+            @if (auth()->user()->esSistemas())
+                <a class="btn" href="{{ route('empresas.create') }}">Nueva empresa</a>
+            @endif
+            <form method="post" action="{{ route('salir') }}">
+                @csrf
+                <button class="secundario" type="submit">Salir</button>
+            </form>
+        </div>
+        <small>{{ auth()->user()->esSistemas() ? 'Sistemas' : (auth()->user()->empresa->nombre ?? 'Usuario') }} · {{ auth()->user()->name }}</small>
+    @else
+        <small>Ingreso</small>
+    @endauth
 </header>
 <main>
     @yield('contenido')

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtegidoPorEmpresa;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Rubro extends Model
 {
+    use ProtegidoPorEmpresa;
     protected $fillable = [
         'frente_id', 'numero', 'codigo', 'descripcion', 'unidad',
         'cantidad_contratada', 'precio_unitario', 'tipo_hoja',
@@ -24,6 +26,11 @@ class Rubro extends Model
     public function frente(): BelongsTo
     {
         return $this->belongsTo(Frente::class);
+    }
+
+    public function contratoParaAcceso(): ?Contrato
+    {
+        return $this->frente?->contrato;
     }
 
     public function planillaRubros(): HasMany

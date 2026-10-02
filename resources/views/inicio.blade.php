@@ -9,9 +9,15 @@
     <div class="card fila">
         <div>
             <h1>Contratos</h1>
-            <p>Al crear el contrato se definen los rubros. En el contrato se crean los frentes generales.</p>
+            @if (auth()->user()->esAdministrador())
+                <p>Al crear el contrato se definen los rubros. En el contrato se crean los frentes generales.</p>
+            @else
+                <p>Estos son los contratos que le asignó el administrador.</p>
+            @endif
         </div>
-        <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
+        @if (auth()->user()->esAdministrador())
+            <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
+        @endif
     </div>
     @forelse ($contratos as $contrato)
         <div class="card fila">
@@ -20,16 +26,18 @@
                 <p>{{ $contrato->objeto }}</p>
                 <p>{{ $contrato->contratista }} · {{ $contrato->frentes_count }} frentes</p>
             </div>
-            <div class="acciones">
-                <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Editar</a>
-                <form method="post" action="{{ route('contratos.destroy', $contrato) }}" onsubmit="return confirm('¿Eliminar este contrato y sus frentes?')">
-                    @csrf
-                    @method('delete')
-                    <button class="btn-rojo" type="submit">Eliminar</button>
-                </form>
-            </div>
+            @if (auth()->user()->esAdministrador())
+                <div class="acciones">
+                    <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Editar</a>
+                    <form method="post" action="{{ route('contratos.destroy', $contrato) }}" onsubmit="return confirm('¿Eliminar este contrato y sus frentes?')">
+                        @csrf
+                        @method('delete')
+                        <button class="btn-rojo" type="submit">Eliminar</button>
+                    </form>
+                </div>
+            @endif
         </div>
     @empty
-        <div class="card"><p>Todavía no hay contratos.</p></div>
+        <div class="card"><p>{{ auth()->user()->esAdministrador() ? 'Todavía no hay contratos.' : 'No tiene contratos asignados.' }}</p></div>
     @endforelse
 @endsection

@@ -7,17 +7,22 @@
     @if (session('estado'))
         <div class="alerta">{{ session('estado') }}</div>
     @endif
-    <form method="post" action="{{ route('frentes.update', $frente) }}" class="fila card">
-        @csrf
-        @method('put')
-        <input name="nombre" value="{{ $frente->nombre }}" required>
-        <button type="submit">Guardar nombre</button>
-        <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar frente</button>
-    </form>
-    <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar este frente y sus cantidades?')">
-        @csrf
-        @method('delete')
-    </form>
+    @php $gestiona = auth()->user()->esAdministrador(); @endphp
+    @if ($gestiona)
+        <form method="post" action="{{ route('frentes.update', $frente) }}" class="fila card">
+            @csrf
+            @method('put')
+            <input name="nombre" value="{{ $frente->nombre }}" required>
+            <button type="submit">Guardar nombre</button>
+            <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar frente</button>
+        </form>
+        <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar este frente y sus cantidades?')">
+            @csrf
+            @method('delete')
+        </form>
+    @else
+        <div class="card"><h1>{{ $frente->nombre }}</h1></div>
+    @endif
     @php
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
@@ -48,7 +53,9 @@
                             @endif
                             <input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}">
                         </div>
-                        <p><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></p>
+                        @if ($gestiona)
+                            <p><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></p>
+                        @endif
                         <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></label>
                         <h3>Contratado</h3>
                         <div class="pares">
@@ -78,6 +85,7 @@
                 @empty
                     <p class="vacia">Esta planilla no tiene rubros. Agrega uno abajo.</p>
                 @endforelse
+                @if ($gestiona)
                 @for ($n = 0; $n < 1; $n++)
                     @php $i = count($lineas) + $n; @endphp
                     <article class="ficha" data-fila data-nuevo>
@@ -103,6 +111,7 @@
                         <p class="resultado">Total <b class="valor-total">0.00</b></p>
                     </article>
                 @endfor
+                @endif
                 @if ($lineas !== [])
                     <article class="ficha cierre-ficha" data-cierre>
                         <h3>Trabajos realizados</h3>
@@ -191,11 +200,12 @@
                                 <td class="num valor-anterior">{{ $m($k['valor_anterior']) }}</td>
                                 <td class="num valor-actual">{{ $m($k['valor_actual']) }}</td>
                                 <td class="num valor-total">{{ $m($k['valor_total']) }}</td>
-                                <td><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></td>
+                                <td>@if ($gestiona)<button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button>@endif</td>
                             </tr>
                         @empty
                             <tr class="vacia"><td colspan="13">Esta planilla no tiene rubros. Agrega uno abajo.</td></tr>
                         @endforelse
+                        @if ($gestiona)
                         @for ($n = 0; $n < 3; $n++)
                             @php $i = count($lineas) + $n; @endphp
                             <tr data-fila data-nuevo>
@@ -214,6 +224,7 @@
                                 <td></td>
                             </tr>
                         @endfor
+                        @endif
                         @if ($lineas !== [])
                             <tr class="cierre" data-cierre>
                                 <td colspan="5">Trabajos realizados</td>
@@ -231,7 +242,9 @@
         </div>
         @endif
         <div class="barra">
-            <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
+            @if ($gestiona)
+                <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
+            @endif
             <button type="submit">Guardar</button>
         </div>
         <template id="fila-nueva">
@@ -277,12 +290,14 @@
             @endif
         </template>
     </form>
+    @if ($gestiona)
     @foreach ($lineas as $linea)
         <form id="quitar-rubro-{{ $linea['rubro']->id }}" method="post" action="{{ route('rubros.destroy', $linea['rubro']) }}" onsubmit="return confirm('¿Quitar este rubro de la planilla?')">
             @csrf
             @method('delete')
         </form>
     @endforeach
+    @endif
     <script>
         const dinero = (valor) => (Math.round((valor + Number.EPSILON) * 100) / 100).toFixed(2);
         const numero = (campo) => {
@@ -325,7 +340,7 @@
             return coincidencia ? Number(coincidencia[1]) : -1;
         });
         let indice = Math.max(-1, ...indices) + 1;
-        document.getElementById('agregar-rubro').addEventListener('click', () => {
+        document.getElementById('agregar-rubro')?.addEventListener('click', () => {
             const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('[data-fila]');
             fila.querySelectorAll('[name]').forEach((campo) => {
                 campo.name = campo.name.replace('__i__', String(indice));

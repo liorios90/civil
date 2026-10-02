@@ -2,14 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ProtegidoPorEmpresa;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contrato extends Model
 {
+    use ProtegidoPorEmpresa;
+
     protected $fillable = [
-        'entidad', 'numero_contrato', 'codigo_proceso', 'objeto',
+        'empresa_id', 'entidad', 'numero_contrato', 'codigo_proceso', 'objeto',
         'fecha_suscripcion', 'fecha_inicio', 'fecha_termino',
         'ubicacion', 'provincia', 'contratista', 'fiscalizador',
         'administrador', 'plazo', 'monto_contrato', 'monto_contrato_iva',
@@ -27,6 +32,21 @@ class Contrato extends Model
             'porcentaje_anticipo' => 'decimal:4',
             'anticipo' => 'decimal:2',
         ];
+    }
+
+    public function empresa(): BelongsTo
+    {
+        return $this->belongsTo(Empresa::class);
+    }
+
+    public function usuarios(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class);
+    }
+
+    public function contratoParaAcceso(): ?Contrato
+    {
+        return $this;
     }
 
     public function frentes(): HasMany

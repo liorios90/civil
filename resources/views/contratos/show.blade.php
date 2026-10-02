@@ -12,7 +12,9 @@
             <p>{{ $contrato->objeto }}</p>
         </div>
         <div class="acciones">
-            <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Rubros</a>
+            @if (auth()->user()->esAdministrador())
+                <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Rubros</a>
+            @endif
             <a class="btn" href="{{ route('inicio') }}">Contratos</a>
             @if ($planilla)
                 <a class="btn" href="{{ route('impresion.planilla', $planilla) }}" target="_blank">Imprimir planilla</a>
@@ -21,17 +23,19 @@
             @endif
         </div>
     </div>
-    <div class="card">
-        <h2>Nueva plantilla</h2>
-        <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
-            @csrf
-            <input name="nombre" value="{{ old('nombre', 'plantilla '.($contrato->frentes->count() + 1)) }}" required>
-            <button type="submit">Crear plantilla</button>
-        </form>
-        @error('nombre')
-            <p>{{ $message }}</p>
-        @enderror
-    </div>
+    @if (auth()->user()->esAdministrador())
+        <div class="card">
+            <h2>Nueva plantilla</h2>
+            <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
+                @csrf
+                <input name="nombre" value="{{ old('nombre', 'plantilla '.($contrato->frentes->count() + 1)) }}" required>
+                <button type="submit">Crear plantilla</button>
+            </form>
+            @error('nombre')
+                <p>{{ $message }}</p>
+            @enderror
+        </div>
+    @endif
     <div class="card">
         <h2>Frentes generales</h2>
         <p>Cada plantilla guarda sus rubros, cantidades y hojas de medición.</p>

@@ -13,8 +13,17 @@ class ContratoController extends Controller
 {
     public function index()
     {
+        $user = auth()->user();
+        $consulta = Contrato::query()
+            ->where('empresa_id', $user->empresa_id)
+            ->withCount('frentes')
+            ->latest();
+        if ($user->esUsuario()) {
+            $consulta->whereIn('id', $user->contratos()->select('contratos.id'));
+        }
+
         return view('inicio', [
-            'contratos' => Contrato::withCount('frentes')->latest()->get(),
+            'contratos' => $consulta->get(),
         ]);
     }
 
@@ -29,7 +38,9 @@ class ContratoController extends Controller
 
     public function store(Request $request, FrenteRubros $catalogo)
     {
-        $contrato = Contrato::create($this->datos($request));
+        $contrato = Contrato::create($this->datos($request) + [
+            'empresa_id' => $request->user()->empresa_id,
+        ]);
         $contrato->planillas()->create([
             'numero' => '01',
             'estado' => 'borrador',
