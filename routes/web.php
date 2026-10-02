@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpresaController;
+use App\Http\Controllers\FiscalizacionController;
 use App\Http\Controllers\FrenteController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImpresionController;
@@ -16,6 +17,10 @@ Route::middleware('guest')->group(function () {
     Route::get('/ingresar', [SesionController::class, 'crear'])->name('ingresar');
     Route::post('/ingresar', [SesionController::class, 'ingresar'])->middleware('throttle:10,1')->name('ingresar.enviar');
 });
+
+Route::get('/fiscalizacion/{token}', [FiscalizacionController::class, 'show'])->where('token', '[A-Za-z0-9]+')->name('fiscalizacion.show');
+Route::get('/fiscalizacion/{token}/rubros/{ejecucion}', [FiscalizacionController::class, 'hoja'])->where(['token' => '[A-Za-z0-9]+', 'ejecucion' => '[0-9]+'])->name('fiscalizacion.hoja');
+Route::get('/fiscalizacion/{token}/archivos/{ruta}', [FiscalizacionController::class, 'archivo'])->where(['token' => '[A-Za-z0-9]+', 'ruta' => '.*'])->name('fiscalizacion.archivo');
 
 Route::middleware(['auth', 'empresa.activa'])->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('salir');
@@ -57,6 +62,7 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
 
     Route::middleware('rol:administrador,usuario')->group(function () {
         Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
+        Route::post('/contratos/{contrato}/enlace', [ContratoController::class, 'enlace'])->name('contratos.enlace');
         Route::get('/contratos/{contrato}/historial', [HistorialController::class, 'index'])->name('historial.index');
         Route::get('/frentes/{frente}', [FrenteController::class, 'show'])->name('frentes.show');
         Route::post('/frentes/{frente}/hoja', [RubroController::class, 'guardar'])->name('rubros.guardar');

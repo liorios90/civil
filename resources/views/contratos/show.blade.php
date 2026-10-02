@@ -24,6 +24,43 @@
             <a class="btn" href="{{ route('historial.index', $contrato) }}">Historial</a>
         </div>
     </div>
+    <div class="card">
+        <h2>Enlace para el fiscalizador</h2>
+        <p>Quien tenga este enlace ve la planilla, las hojas de medición y las fotos. No puede modificar nada ni necesita un usuario.</p>
+        @if ($contrato->enlace_fiscalizador)
+            @php
+                $urlFiscalizador = route('fiscalizacion.show', $contrato->enlace_fiscalizador);
+            @endphp
+            <p class="fila">
+                <input id="enlace-fiscalizador" value="{{ $urlFiscalizador }}" readonly>
+                <button type="button" class="secundario" id="copiar-enlace">Copiar enlace</button>
+                <a class="btn" href="https://wa.me/?text={{ rawurlencode('Planilla '.$contrato->codigo_proceso."\n".$urlFiscalizador) }}" target="_blank">WhatsApp</a>
+            </p>
+            <form method="post" action="{{ route('contratos.enlace', $contrato) }}" onsubmit="return confirm('El enlace actual dejará de funcionar. ¿Generar otro?')">
+                @csrf
+                <input type="hidden" name="regenerar" value="1">
+                <button class="secundario" type="submit">Generar otro enlace</button>
+            </form>
+            <script>
+                document.getElementById('copiar-enlace').addEventListener('click', async () => {
+                    const campo = document.getElementById('enlace-fiscalizador');
+                    try {
+                        await navigator.clipboard.writeText(campo.value);
+                    } catch (error) {
+                        campo.select();
+                        document.execCommand('copy');
+                    }
+                    const boton = document.getElementById('copiar-enlace');
+                    boton.textContent = 'Enlace copiado';
+                });
+            </script>
+        @else
+            <form method="post" action="{{ route('contratos.enlace', $contrato) }}">
+                @csrf
+                <button type="submit">Crear enlace</button>
+            </form>
+        @endif
+    </div>
     @if (auth()->user()->esAdministrador())
         <div class="card">
             <h2>Nueva plantilla</h2>

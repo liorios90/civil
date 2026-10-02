@@ -19,7 +19,7 @@ trait RegistraCambios
     private static array $camposSinHistorial = [
         'id', 'created_at', 'updated_at', 'creado_por', 'modificado_por',
         'empresa_id', 'contrato_id', 'frente_id', 'rubro_id', 'planilla_id', 'anexo_id',
-        'orden', 'codigo', 'tipo_hoja', 'es_catalogo',
+        'orden', 'codigo', 'tipo_hoja', 'es_catalogo', 'enlace_fiscalizador',
     ];
 
     public static function bootRegistraCambios(): void

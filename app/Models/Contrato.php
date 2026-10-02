@@ -30,7 +30,7 @@ class Contrato extends Model
         'fecha_suscripcion', 'fecha_inicio', 'fecha_termino',
         'ubicacion', 'provincia', 'contratista', 'fiscalizador',
         'administrador', 'plazo', 'monto_contrato', 'monto_contrato_iva',
-        'porcentaje_anticipo', 'anticipo',
+        'porcentaje_anticipo', 'anticipo', 'enlace_fiscalizador',
     ];
 
     protected function casts(): array

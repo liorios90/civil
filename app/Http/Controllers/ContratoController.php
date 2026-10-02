@@ -8,6 +8,7 @@ use App\Services\FrenteRubros;
 use App\Services\RubrosExcel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class ContratoController extends Controller
 {
@@ -60,6 +61,19 @@ class ContratoController extends Controller
             'contrato' => $contrato,
             'planilla' => $planilla,
         ]);
+    }
+
+    public function enlace(Request $request, Contrato $contrato)
+    {
+        if (! $contrato->enlace_fiscalizador || $request->boolean('regenerar')) {
+            $contrato->update(['enlace_fiscalizador' => Str::random(48)]);
+        }
+
+        return redirect()
+            ->route('contratos.show', $contrato)
+            ->with('estado', $request->boolean('regenerar')
+                ? 'El enlace anterior ya no sirve. Use el nuevo.'
+                : 'Enlace listo para enviar al fiscalizador.');
     }
 
     public function edit(Contrato $contrato)
