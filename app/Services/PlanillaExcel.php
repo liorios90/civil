@@ -41,10 +41,10 @@ class PlanillaExcel
         $hoja->setTitle('Planilla');
         $contrato = $planilla->contrato;
 
-        $this->titulo($hoja, 1, 'MUNICIPIO DEL DISTRITO METROPOLITANO DE QUITO');
-        $this->titulo($hoja, 2, 'ADMINISTRACIÓN ZONAL NORTE "EUGENIO ESPEJO"');
-        $this->titulo($hoja, 3, 'UNIDAD DE FISCALIZACIÓN');
-        $this->titulo($hoja, 4, 'PLANILLA DE OBRAS EJECUTADAS');
+        $this->titulo($hoja, 1, (string) $contrato->entidad, 14);
+        $this->titulo($hoja, 2, (string) $contrato->objeto, 12);
+        $hoja->getRowDimension(2)->setRowHeight(32);
+        $this->titulo($hoja, 3, 'PLANILLA DE OBRAS EJECUTADAS', 12);
 
         $desde = optional($planilla->periodo_desde)->format('d/m/Y');
         $hasta = optional($planilla->periodo_hasta)->format('d/m/Y');
@@ -90,56 +90,92 @@ class PlanillaExcel
         $this->pintar($hoja, "A{$fila}:R{$sub}", 'D9E2F0', true, Alignment::HORIZONTAL_CENTER);
 
         $fila = $sub + 1;
+        $subtotales = [];
         foreach ($liquidacion['frentes'] as $grupo) {
             $hoja->mergeCells("A{$fila}:R{$fila}");
             $hoja->setCellValue("A{$fila}", $grupo['frente']->nombre);
             $this->pintar($hoja, "A{$fila}:R{$fila}", '1F4E79', true, Alignment::HORIZONTAL_LEFT, 'FFFFFF');
             $fila++;
 
+            $inicio = $fila;
             foreach ($grupo['lineas'] as $linea) {
                 $k = $linea['calculo'];
-                $hoja->fromArray([
-                    $linea['rubro']->numero,
-                    $linea['rubro']->descripcion,
-                    $linea['rubro']->unidad,
-                    $this->numero($k['cantidad_contratada']),
-                    $this->numero($k['precio_unitario']),
-                    $this->numero($k['total_contratado']),
-                    $this->numero($k['cantidad_anterior']),
-                    $this->numero($k['cantidad_actual']),
-                    $this->numero($k['cantidad_total']),
-                    $this->numero($k['valor_anterior']),
-                    $this->numero($k['valor_actual']),
-                    $this->numero($k['valor_total']),
-                    $this->numero($k['incremento_cantidad']),
-                    $this->numero($k['incremento_valor']),
-                    $this->numero($k['decremento_cantidad']),
-                    $this->numero($k['decremento_valor']),
-                    $k['porcentaje'] === null ? '' : round($k['porcentaje'] * 100, 2),
-                    $k['observacion'],
-                ], '∅', "A{$fila}");
-                $this->dinero($hoja, "D{$fila}:Q{$fila}");
+                $r = $fila;
+                $hoja->setCellValue("A{$r}", $linea['rubro']->numero);
+                $hoja->setCellValue("B{$r}", $linea['rubro']->descripcion);
+                $hoja->setCellValue("C{$r}", $linea['rubro']->unidad);
+                $hoja->setCellValue("D{$r}", $this->numero($k['cantidad_contratada']));
+                $hoja->setCellValue("E{$r}", $this->numero($k['precio_unitario']));
+                $hoja->setCellValue("G{$r}", $this->numero($k['cantidad_anterior']));
+                $hoja->setCellValue("H{$r}", $this->numero($k['cantidad_actual']));
+                $hoja->setCellValue("F{$r}", "=ROUND(D{$r}*E{$r},2)");
+                $hoja->setCellValue("I{$r}", "=ROUND(G{$r}+H{$r},2)");
+                $hoja->setCellValue("J{$r}", "=ROUND(G{$r}*E{$r},2)");
+                $hoja->setCellValue("K{$r}", "=ROUND(H{$r}*E{$r},2)");
+                $hoja->setCellValue("L{$r}", "=ROUND(J{$r}+K{$r},2)");
+                $hoja->setCellValue("M{$r}", "=IF(I{$r}>D{$r},ROUND(I{$r}-D{$r},2),\"\")");
+                $hoja->setCellValue("N{$r}", "=IF(M{$r}=\"\",\"\",ROUND(M{$r}*E{$r},2))");
+                $hoja->setCellValue("O{$r}", "=IF(I{$r}<D{$r},ROUND(I{$r}-D{$r},2),\"\")");
+                $hoja->setCellValue("P{$r}", "=IF(O{$r}=\"\",\"\",ROUND(O{$r}*E{$r},2))");
+                $hoja->setCellValue("Q{$r}", "=IF(F{$r}=0,\"\",ROUND(L{$r}/F{$r}*100,2))");
+                $hoja->setCellValue("R{$r}", "=IF(I{$r}>D{$r},\"INCREMENTO DE CANTIDADES\",\"\")");
+                $this->dinero($hoja, "D{$r}:Q{$r}");
                 $fila++;
             }
 
+            $fin = $fila - 1;
+            $suma = fn (string $columna) => $fin >= $inicio ? "=SUM({$columna}{$inicio}:{$columna}{$fin})" : '=0';
             $hoja->mergeCells("A{$fila}:E{$fila}");
             $hoja->setCellValue("A{$fila}", 'SUBTOTAL');
-            $hoja->setCellValue("F{$fila}", $this->numero($grupo['subtotal']['contratado']));
-            $hoja->setCellValue("J{$fila}", $this->numero($grupo['subtotal']['anterior']));
-            $hoja->setCellValue("K{$fila}", $this->numero($grupo['subtotal']['actual']));
-            $hoja->setCellValue("L{$fila}", $this->numero($grupo['subtotal']['acumulado']));
+            $hoja->setCellValue("F{$fila}", $suma('F'));
+            $hoja->setCellValue("J{$fila}", $suma('J'));
+            $hoja->setCellValue("K{$fila}", $suma('K'));
+            $hoja->setCellValue("L{$fila}", $suma('L'));
             $this->dinero($hoja, "F{$fila}:L{$fila}");
             $this->pintar($hoja, "A{$fila}:R{$fila}", 'E2EFDA', true);
+            $subtotales[] = $fila;
             $fila++;
         }
 
-        $this->cierre($hoja, $fila, 'TRABAJOS REALIZADOS', $liquidacion['totales'], $liquidacion['totales']['contratado'], 'Saldo '.$this->texto($liquidacion['saldo']));
+        $sumar = function (string $columna) use ($subtotales): string {
+            if ($subtotales === []) {
+                return '=0';
+            }
+
+            return '='.implode('+', array_map(fn (int $subtotal) => $columna.$subtotal, $subtotales));
+        };
+        $trabajos = $fila;
+        $this->cierre($hoja, $trabajos, 'TRABAJOS REALIZADOS', [
+            'anterior' => $sumar('J'),
+            'actual' => $sumar('K'),
+            'acumulado' => $sumar('L'),
+        ], $sumar('F'), "=CONCATENATE(\"Saldo \",TEXT(F{$trabajos}-L{$trabajos},\"#,##0.00\"))");
+        $hoja->setCellValue('N8', "=F{$trabajos}");
+        $hoja->setCellValue('N9', "=K{$trabajos}");
+        $hoja->setCellValue('N10', "=L{$trabajos}");
         $fila++;
-        $this->cierre($hoja, $fila, 'IVA '.$planilla->iva_porcentaje.' %', $liquidacion['iva']);
+        $iva = (float) $planilla->iva_porcentaje;
+        $this->cierre($hoja, $fila, 'IVA '.$planilla->iva_porcentaje.' %', [
+            'anterior' => "=ROUND(J{$trabajos}*{$iva}/100,2)",
+            'actual' => "=ROUND(K{$trabajos}*{$iva}/100,2)",
+            'acumulado' => "=ROUND(L{$trabajos}*{$iva}/100,2)",
+        ]);
         $fila++;
-        $this->cierre($hoja, $fila, 'AMORTIZACIÓN ANTICIPO '.number_format($liquidacion['porcentaje_anticipo'] * 100, 0).' %', $liquidacion['amortizacion']);
+        $anticipo = (float) $liquidacion['porcentaje_anticipo'];
+        $amortizacion = $fila;
+        $this->cierre($hoja, $amortizacion, 'AMORTIZACIÓN ANTICIPO '.number_format($anticipo * 100, 0).' %', [
+            'anterior' => "=ROUND(J{$trabajos}*{$anticipo},2)",
+            'actual' => "=ROUND(K{$trabajos}*{$anticipo},2)",
+            'acumulado' => "=ROUND(L{$trabajos}*{$anticipo},2)",
+        ]);
         $fila++;
-        $this->cierre($hoja, $fila, 'LÍQUIDO A PAGAR', $liquidacion['liquido']);
+        $descuentos = (float) $planilla->descuentos;
+        $multas = (float) $planilla->multas;
+        $this->cierre($hoja, $fila, 'LÍQUIDO A PAGAR', [
+            'anterior' => "=ROUND(J{$trabajos}-J{$amortizacion}-{$descuentos}-{$multas},2)",
+            'actual' => "=ROUND(K{$trabajos}-K{$amortizacion}-{$descuentos}-{$multas},2)",
+            'acumulado' => "=ROUND(L{$trabajos}-L{$amortizacion}-{$descuentos}-{$multas},2)",
+        ]);
 
         $fila += 3;
         $hoja->setCellValue("A{$fila}", $contrato->administrador);
@@ -183,12 +219,12 @@ class PlanillaExcel
         return $libro;
     }
 
-    private function titulo(Worksheet $hoja, int $fila, string $texto): void
+    private function titulo(Worksheet $hoja, int $fila, string $texto, int $tamano = 12): void
     {
         $hoja->mergeCells("A{$fila}:R{$fila}");
         $hoja->setCellValue("A{$fila}", $texto);
-        $hoja->getStyle("A{$fila}")->getFont()->setBold(true)->setSize($fila === 4 ? 14 : 12);
-        $hoja->getStyle("A{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle("A{$fila}")->getFont()->setBold(true)->setSize($tamano);
+        $hoja->getStyle("A{$fila}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setWrapText(true);
     }
 
     private function meta(Worksheet $hoja, int $fila, string $etiqueta, mixed $valor, string $etiquetaDerecha, mixed $valorDerecho): void
@@ -212,15 +248,15 @@ class PlanillaExcel
             $hoja->mergeCells("A{$fila}:I{$fila}");
         } else {
             $hoja->mergeCells("A{$fila}:E{$fila}");
-            $hoja->setCellValue("F{$fila}", $this->numero($contratado));
+            $hoja->setCellValue("F{$fila}", $this->formulaONumero($contratado));
         }
         $hoja->setCellValue("A{$fila}", $texto);
-        $hoja->setCellValue("J{$fila}", $this->numero($valores['anterior']));
-        $hoja->setCellValue("K{$fila}", $this->numero($valores['actual']));
-        $hoja->setCellValue("L{$fila}", $this->numero($valores['acumulado']));
+        $hoja->setCellValue("J{$fila}", $this->formulaONumero($valores['anterior']));
+        $hoja->setCellValue("K{$fila}", $this->formulaONumero($valores['actual']));
+        $hoja->setCellValue("L{$fila}", $this->formulaONumero($valores['acumulado']));
         if ($nota !== '') {
             $hoja->mergeCells("M{$fila}:R{$fila}");
-            $hoja->setCellValue("M{$fila}", $nota);
+            $hoja->setCellValue("M{$fila}", $this->formulaONumero($nota));
         }
         $this->dinero($hoja, "J{$fila}:L{$fila}");
         $this->pintar($hoja, "A{$fila}:R{$fila}", 'FFF2CC', true);
@@ -238,6 +274,15 @@ class PlanillaExcel
     {
         $hoja->getStyle($rango)->getNumberFormat()->setFormatCode('#,##0.00');
         $hoja->getStyle($rango)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+    }
+
+    private function formulaONumero(mixed $valor): mixed
+    {
+        if (is_string($valor) && (str_starts_with($valor, '=') || ! is_numeric($valor))) {
+            return $valor;
+        }
+
+        return $this->numero($valor);
     }
 
     private function numero(mixed $valor): float|string

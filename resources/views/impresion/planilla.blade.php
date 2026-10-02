@@ -2,6 +2,12 @@
 
 @section('titulo', 'Planilla '.$planilla->numero)
 
+@section('extra')
+    .cabecera h1 { font-size: 14px; }
+    .cabecera .objeto { font-size: 11px; margin: 4px 24px; }
+    .cabecera h2 { font-size: 12px; }
+@endsection
+
 @section('contenido')
     @php
         $m = fn ($v) => $v === null || $v === '' ? '' : number_format((float) $v, 2);
@@ -10,9 +16,8 @@
     @endphp
     <p class="no-print"><a href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a></p>
     <div class="cabecera centro">
-        <h1>MUNICIPIO DEL DISTRITO METROPOLITANO DE QUITO</h1>
-        <p>ADMINISTRACIÓN ZONAL NORTE "EUGENIO ESPEJO"</p>
-        <p>UNIDAD DE FISCALIZACIÓN</p>
+        <h1>{{ $c->entidad }}</h1>
+        <p class="objeto">{{ $c->objeto }}</p>
         <h2>PLANILLA DE OBRAS EJECUTADAS</h2>
     </div>
     <table style="margin-bottom:8px">
