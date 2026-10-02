@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('titulo', 'Planilla de liquidación')</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         :root { color-scheme: light; }
         * { box-sizing: border-box; }
@@ -61,6 +62,9 @@
         .estado-planilla { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: #e8eef5; color: #0f3d68; }
         .estado-planilla.pendiente { background: #fff4e5; color: #8a5a00; }
         .estado-planilla.aprobada { background: #e5f4e4; color: #1d6b32; }
+        .aviso { display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #25d366; color: #fff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; }
+        .aviso[hidden] { display: none; }
+        header a .aviso { color: #fff; margin-left: 6px; }
         @media (max-width: 800px) { .tablero { grid-template-columns: 1fr 1fr; } }
         .fila { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
         .opciones { display: grid; gap: 8px; }
@@ -115,6 +119,9 @@
     <a href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
     @auth
         <div class="cabecera-acciones">
+            @if (auth()->user()->esAdministrador() || auth()->user()->esUsuario())
+                <a class="btn" href="{{ route('mensajes.index') }}">Mensajes<span class="aviso" id="avisos-mensajes" @if ($sinLeerMensajes < 1) hidden @endif>{{ $sinLeerMensajes > 99 ? '99+' : $sinLeerMensajes }}</span></a>
+            @endif
             @if (auth()->user()->esAdministrador())
                 <a class="btn" href="{{ route('usuarios.index') }}">Usuarios</a>
                 <a class="btn" href="{{ route('historial.general') }}">Historial</a>

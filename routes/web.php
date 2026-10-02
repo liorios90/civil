@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnexoController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\FiscalizacionController;
@@ -63,6 +64,11 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
     });
 
     Route::middleware('rol:administrador,usuario')->group(function () {
+        Route::get('/mensajes', [ChatController::class, 'index'])->name('mensajes.index');
+        Route::get('/mensajes/novedades', [ChatController::class, 'novedades'])->name('mensajes.novedades');
+        Route::get('/mensajes/{usuario}', [ChatController::class, 'show'])->whereNumber('usuario')->name('mensajes.show');
+        Route::post('/mensajes/{usuario}', [ChatController::class, 'enviar'])->whereNumber('usuario')->middleware('throttle:60,1')->name('mensajes.enviar');
+
         Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
         Route::post('/contratos/{contrato}/enlace', [ContratoController::class, 'enlace'])->name('contratos.enlace');
         Route::post('/contratos/{contrato}/enviar', [ContratoController::class, 'enviarAprobacion'])->name('contratos.enviar');

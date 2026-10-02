@@ -22,6 +22,7 @@
                 <p>{{ $usuario->contratos->pluck('codigo_proceso')->join(', ') ?: 'Sin contratos' }}</p>
             </div>
             <div class="acciones">
+                <a class="btn" href="{{ route('mensajes.show', $usuario) }}">Mensaje</a>
                 <a class="btn" href="{{ route('usuarios.edit', $usuario) }}">Editar</a>
                 <form method="post" action="{{ route('usuarios.destroy', $usuario) }}" onsubmit="return confirm('¿Eliminar este usuario?')">
                     @csrf
