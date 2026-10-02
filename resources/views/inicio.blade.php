@@ -19,12 +19,40 @@
             <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
         @endif
     </div>
+    @if ($tablero)
+        @php
+            $dinero = fn ($v) => number_format((float) $v, 2);
+        @endphp
+        <div class="tablero">
+            <div class="card"><small>Obras activas</small><b>{{ $tablero['activas'] }}</b></div>
+            <div class="card"><small>Avance</small><b>{{ $tablero['avance'] === null ? '—' : number_format($tablero['avance'], 2).' %' }}</b></div>
+            <div class="card"><small>Monto ejecutado</small><b>{{ $dinero($tablero['ejecutado']) }}</b><small>de {{ $dinero($tablero['contratado']) }} contratado</small></div>
+            <div class="card"><small>Pendientes de aprobación</small><b>{{ count($tablero['pendientes']) }}</b></div>
+        </div>
+        @if ($tablero['pendientes'] !== [])
+            <div class="card">
+                <h2>Planillas pendientes de aprobación</h2>
+                <div class="opciones">
+                    @foreach ($tablero['pendientes'] as $pendiente)
+                        <a class="opcion" href="{{ route('contratos.show', $pendiente['contrato']) }}">
+                            <strong>{{ $pendiente['contrato']->codigo_proceso }}</strong>
+                            <small>Planilla {{ $pendiente['planilla']->numero }}</small>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
+    @endif
     @forelse ($contratos as $contrato)
         <div class="card fila">
             <div>
                 <h2><a href="{{ route('contratos.show', $contrato) }}">{{ $contrato->codigo_proceso }}</a></h2>
                 <p>{{ $contrato->objeto }}</p>
                 <p>{{ $contrato->contratista }} · {{ $contrato->frentes_count }} frentes</p>
+                @php
+                    $estadoPlanilla = $contrato->planillas->sortByDesc('id')->first()->estado ?? 'borrador';
+                @endphp
+                <p><span class="estado-planilla {{ $estadoPlanilla }}">{{ ['borrador' => 'En elaboración', 'pendiente' => 'Pendiente de aprobación', 'aprobada' => 'Aprobada'][$estadoPlanilla] ?? $estadoPlanilla }}</span></p>
             </div>
             @if (auth()->user()->esAdministrador())
                 <div class="acciones">

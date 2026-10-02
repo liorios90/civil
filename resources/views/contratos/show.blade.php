@@ -6,6 +6,7 @@
     @if (session('estado'))
         <div class="alerta">{{ session('estado') }}</div>
     @endif
+    <p><a class="btn secundario" href="{{ route('inicio') }}">Volver a la pantalla principal</a></p>
     <div class="card fila">
         <div>
             <h1>{{ $contrato->entidad }}</h1>
@@ -15,7 +16,6 @@
             @if (auth()->user()->esAdministrador())
                 <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Rubros</a>
             @endif
-            <a class="btn" href="{{ route('inicio') }}">Contratos</a>
             @if ($planilla)
                 <a class="btn" href="{{ route('impresion.planilla', $planilla) }}" target="_blank">Imprimir planilla</a>
                 <a class="btn" href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a>
@@ -24,17 +24,45 @@
             <a class="btn" href="{{ route('historial.index', $contrato) }}">Historial</a>
         </div>
     </div>
+    @if ($planilla)
+        @php
+            $estadoPlanilla = $planilla->estado ?: 'borrador';
+        @endphp
+        <div class="card fila">
+            <div>
+                <h2>Planilla {{ $planilla->numero }}</h2>
+                <p><span class="estado-planilla {{ $estadoPlanilla }}">{{ ['borrador' => 'En elaboración', 'pendiente' => 'Pendiente de aprobación', 'aprobada' => 'Aprobada'][$estadoPlanilla] ?? $estadoPlanilla }}</span></p>
+            </div>
+            <div class="acciones">
+                @if ($estadoPlanilla === 'borrador')
+                    <form method="post" action="{{ route('contratos.enviar', $contrato) }}">
+                        @csrf
+                        <button type="submit">Enviar a aprobación</button>
+                    </form>
+                @endif
+                @if (auth()->user()->esAdministrador() && $estadoPlanilla === 'pendiente')
+                    <form method="post" action="{{ route('contratos.aprobar', $contrato) }}">
+                        @csrf
+                        <button type="submit">Aprobar planilla</button>
+                    </form>
+                @endif
+                @if (auth()->user()->esAdministrador() && in_array($estadoPlanilla, ['pendiente', 'aprobada'], true))
+                    <form method="post" action="{{ route('contratos.devolver', $contrato) }}">
+                        @csrf
+                        <button class="secundario" type="submit">Devolver a elaboración</button>
+                    </form>
+                @endif
+            </div>
+        </div>
+    @endif
     <div class="card">
         <h2>Enlace para el fiscalizador</h2>
         <p>Quien tenga este enlace ve la planilla, las hojas de medición y las fotos. No puede modificar nada ni necesita un usuario.</p>
         @if ($contrato->enlace_fiscalizador)
-            @php
-                $urlFiscalizador = route('fiscalizacion.show', $contrato->enlace_fiscalizador);
-            @endphp
             <p class="fila">
-                <input id="enlace-fiscalizador" value="{{ $urlFiscalizador }}" readonly>
+                <input id="enlace-fiscalizador" value="{{ route('fiscalizacion.show', $contrato->enlace_fiscalizador) }}" readonly>
                 <button type="button" class="secundario" id="copiar-enlace">Copiar enlace</button>
-                <a class="btn" href="https://wa.me/?text={{ rawurlencode('Planilla '.$contrato->codigo_proceso."\n".$urlFiscalizador) }}" target="_blank">WhatsApp</a>
+                <a class="btn" href="https://wa.me/?text={{ rawurlencode('Planilla '.$contrato->codigo_proceso.' '.route('fiscalizacion.show', $contrato->enlace_fiscalizador)) }}" target="_blank">WhatsApp</a>
             </p>
             <form method="post" action="{{ route('contratos.enlace', $contrato) }}" onsubmit="return confirm('El enlace actual dejará de funcionar. ¿Generar otro?')">
                 @csrf

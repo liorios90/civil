@@ -54,6 +54,14 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid label, .ancho { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
         .ancho { grid-column: 1 / -1; }
+        .tablero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .tablero .card { margin: 0; }
+        .tablero small { color: #4a5b6d; }
+        .tablero b { display: block; font-size: 22px; margin-top: 4px; }
+        .estado-planilla { display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 12px; background: #e8eef5; color: #0f3d68; }
+        .estado-planilla.pendiente { background: #fff4e5; color: #8a5a00; }
+        .estado-planilla.aprobada { background: #e5f4e4; color: #1d6b32; }
+        @media (max-width: 800px) { .tablero { grid-template-columns: 1fr 1fr; } }
         .fila { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
         .opciones { display: grid; gap: 8px; }
         .opcion { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #d5dde5; border-radius: 8px; text-decoration: none; color: inherit; background: #f8fafc; }

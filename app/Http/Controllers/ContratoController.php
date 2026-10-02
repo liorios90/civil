@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contrato;
 use App\Models\Rubro;
 use App\Services\FrenteRubros;
+use App\Services\PlanillaCalculator;
 use App\Services\RubrosExcel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -12,19 +13,23 @@ use Illuminate\Support\Str;
 
 class ContratoController extends Controller
 {
-    public function index()
+    public function index(?PlanillaCalculator $calculator = null)
     {
+        $calculator ??= app(PlanillaCalculator::class);
         $user = auth()->user();
         $consulta = Contrato::query()
             ->where('empresa_id', $user->empresa_id)
+            ->with('planillas')
             ->withCount('frentes')
             ->latest();
         if ($user->esUsuario()) {
             $consulta->whereIn('id', $user->contratos()->select('contratos.id'));
         }
+        $contratos = $consulta->get();
 
         return view('inicio', [
-            'contratos' => $consulta->get(),
+            'contratos' => $contratos,
+            'tablero' => $user->esAdministrador() ? $this->tablero($contratos, $calculator) : null,
         ]);
     }
 
@@ -61,6 +66,33 @@ class ContratoController extends Controller
             'contrato' => $contrato,
             'planilla' => $planilla,
         ]);
+    }
+
+    public function enviarAprobacion(Contrato $contrato)
+    {
+        $planilla = $this->planillaActual($contrato);
+        abort_unless($planilla->estado === 'borrador', 404);
+        $planilla->update(['estado' => 'pendiente']);
+
+        return redirect()->route('contratos.show', $contrato)->with('estado', 'Planilla enviada a aprobación.');
+    }
+
+    public function aprobar(Contrato $contrato)
+    {
+        $planilla = $this->planillaActual($contrato);
+        abort_unless($planilla->estado === 'pendiente', 404);
+        $planilla->update(['estado' => 'aprobada']);
+
+        return redirect()->route('contratos.show', $contrato)->with('estado', 'Planilla aprobada.');
+    }
+
+    public function devolver(Contrato $contrato)
+    {
+        $planilla = $this->planillaActual($contrato);
+        abort_unless(in_array($planilla->estado, ['pendiente', 'aprobada'], true), 404);
+        $planilla->update(['estado' => 'borrador']);
+
+        return redirect()->route('contratos.show', $contrato)->with('estado', 'La planilla volvió a elaboración.');
     }
 
     public function enlace(Request $request, Contrato $contrato)
@@ -131,6 +163,51 @@ class ContratoController extends Controller
         $contrato->delete();
 
         return redirect()->route('inicio')->with('estado', 'Contrato '.$codigo.' eliminado.');
+    }
+
+    private function planillaActual(Contrato $contrato)
+    {
+        $planilla = $contrato->planillas()->latest('id')->first();
+        abort_unless($planilla, 404);
+
+        return $planilla;
+    }
+
+    /**
+     * @param  Collection<int, Contrato>  $contratos
+     * @return array{activas: int, avance: ?float, ejecutado: float, contratado: float, pendientes: array<int, array{contrato: Contrato, planilla: \App\Models\Planilla}>}
+     */
+    private function tablero(Collection $contratos, PlanillaCalculator $calculator): array
+    {
+        $contratado = 0.0;
+        $ejecutado = 0.0;
+        $activas = 0;
+        $pendientes = [];
+
+        foreach ($contratos as $contrato) {
+            $planilla = $contrato->planillas->sortByDesc('id')->first();
+            $estado = $planilla->estado ?? 'borrador';
+            if ($estado !== 'aprobada') {
+                $activas++;
+            }
+            if ($planilla && $estado === 'pendiente') {
+                $pendientes[] = ['contrato' => $contrato, 'planilla' => $planilla];
+            }
+            if (! $planilla) {
+                continue;
+            }
+            $totales = $calculator->liquidar($planilla)['totales'];
+            $contratado += $totales['contratado'];
+            $ejecutado += $totales['acumulado'];
+        }
+
+        return [
+            'activas' => $activas,
+            'avance' => $contratado > 0 ? round($ejecutado / $contratado * 100, 2) : null,
+            'ejecutado' => round($ejecutado, 2),
+            'contratado' => round($contratado, 2),
+            'pendientes' => $pendientes,
+        ];
     }
 
     /**
