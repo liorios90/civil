@@ -27,6 +27,8 @@
         @csrf
         @if ($enAplicacion)
             <h2>{{ $frente->nombre }}</h2>
+            <p class="buscar"><input type="search" data-buscar-rubros placeholder="Buscar rubro por número o descripción" autocomplete="off"></p>
+            <p data-sin-rubros hidden>Ningún rubro coincide.</p>
             <div data-lista>
                 @forelse ($lineas as $i => $linea)
                     @php
@@ -78,7 +80,7 @@
                 @endforelse
                 @for ($n = 0; $n < 1; $n++)
                     @php $i = count($lineas) + $n; @endphp
-                    <article class="ficha" data-fila>
+                    <article class="ficha" data-fila data-nuevo>
                         <label>Descripción<input name="filas[{{ $i }}][descripcion]" placeholder="Nuevo rubro"></label>
                         <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" placeholder="u"></label>
                         <h3>Contratado</h3>
@@ -114,6 +116,8 @@
         @else
         <div class="card">
             <h2>{{ $frente->nombre }}</h2>
+            <p class="buscar"><input type="search" data-buscar-rubros placeholder="Buscar rubro por número o descripción" autocomplete="off"></p>
+            <p data-sin-rubros hidden>Ningún rubro coincide.</p>
             <div class="scroll ajustada">
                 <table class="hoja vista">
                     <colgroup>
@@ -194,7 +198,7 @@
                         @endforelse
                         @for ($n = 0; $n < 3; $n++)
                             @php $i = count($lineas) + $n; @endphp
-                            <tr data-fila>
+                            <tr data-fila data-nuevo>
                                 <td class="num"></td>
                                 <td><input name="filas[{{ $i }}][descripcion]" placeholder="Nuevo rubro"></td>
                                 <td><input class="u" name="filas[{{ $i }}][unidad]" placeholder="u"></td>
@@ -232,7 +236,7 @@
         </div>
         <template id="fila-nueva">
             @if ($enAplicacion)
-                <article class="ficha" data-fila>
+                <article class="ficha" data-fila data-nuevo>
                     <label>Descripción<input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></label>
                     <label>Unidad<input class="u" name="filas[__i__][unidad]" placeholder="u"></label>
                     <h3>Contratado</h3>
@@ -255,7 +259,7 @@
                     <p class="resultado">Total <b class="valor-total">0.00</b></p>
                 </article>
             @else
-                <tr data-fila>
+                <tr data-fila data-nuevo>
                     <td class="num"></td>
                     <td><input name="filas[__i__][descripcion]" placeholder="Nuevo rubro"></td>
                     <td><input class="u" name="filas[__i__][unidad]" placeholder="u"></td>
@@ -333,6 +337,37 @@
             lista.querySelector('.vacia')?.remove();
             enlazar(fila);
             fila.querySelector('input')?.focus();
+        });
+        const buscar = document.querySelector('[data-buscar-rubros]');
+        const aviso = document.querySelector('[data-sin-rubros]');
+        const normalizar = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');
+        const textoFila = (fila) => {
+            const partes = [];
+            fila.querySelectorAll('a, strong, .num, .ficha-num').forEach((elemento) => partes.push(elemento.textContent));
+            fila.querySelectorAll('input:not([type="hidden"])').forEach((campo) => partes.push(campo.value));
+            return normalizar(partes.join(' '));
+        };
+        const filtrar = () => {
+            const consulta = normalizar(buscar.value.trim());
+            let visibles = 0;
+            let guardados = 0;
+            lista.querySelectorAll('[data-fila]').forEach((fila) => {
+                if (fila.hasAttribute('data-nuevo')) {
+                    fila.hidden = false;
+                    return;
+                }
+                guardados += 1;
+                const coincide = consulta === '' || textoFila(fila).includes(consulta);
+                fila.hidden = !coincide;
+                if (coincide) visibles += 1;
+            });
+            const cierre = lista.querySelector('[data-cierre]');
+            if (cierre) cierre.hidden = consulta !== '';
+            if (aviso) aviso.hidden = consulta === '' || visibles > 0 || guardados === 0;
+        };
+        buscar.addEventListener('input', filtrar);
+        buscar.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Enter') evento.preventDefault();
         });
     </script>
 @endsection

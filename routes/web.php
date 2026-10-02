@@ -13,6 +13,8 @@ Route::post('/contratos', [ContratoController::class, 'store'])->name('contratos
 Route::get('/contratos/{contrato}/editar', [ContratoController::class, 'edit'])->name('contratos.edit');
 Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
 Route::put('/contratos/{contrato}', [ContratoController::class, 'update'])->name('contratos.update');
+Route::post('/contratos/{contrato}/rubros-excel', [ContratoController::class, 'importarRubros'])->name('contratos.rubros.excel');
+Route::delete('/contratos/{contrato}/rubros/{rubro}', [ContratoController::class, 'eliminarRubro'])->name('contratos.rubros.eliminar');
 Route::delete('/contratos/{contrato}', [ContratoController::class, 'destroy'])->name('contratos.destroy');
 
 Route::post('/contratos/{contrato}/frentes', [FrenteController::class, 'store'])->name('frentes.store');

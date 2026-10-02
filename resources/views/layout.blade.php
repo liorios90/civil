@@ -25,10 +25,13 @@
         .meta { display: grid; grid-template-columns: 180px 1fr; gap: 4px 12px; }
         .meta b { color: #4a5b6d; font-weight: 600; }
         a { color: #0b5cab; }
-        button, .btn { background: #0f3d68; color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
-        button.secundario { background: #e8eef5; color: #0f3d68; }
+        button, .btn { background: #0f3d68; color: #fff; border: 0; border-radius: 6px; padding: 8px 12px; cursor: pointer; text-decoration: none; display: inline-block; }
+        button.secundario, a.secundario { background: #e8eef5; color: #0f3d68; }
         input { border: 1px solid #c5d0db; border-radius: 6px; padding: 6px 8px; width: 100%; }
         .alerta { background: #fff4e5; border: 1px solid #f0d3a2; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
+        .buscar { margin: 0 0 10px; }
+        .buscar input { max-width: 420px; }
+        [data-sin-rubros] { margin: 0 0 10px; color: #4a5b6d; }
         .danger { background: transparent; color: #9b1c1c; padding: 0; }
         .btn-rojo { background: #9b1c1c; }
         .acciones { display: flex; gap: 8px; align-items: center; }
@@ -79,6 +82,7 @@
         body.aplicacion .cierre-ficha { background: #fff8e8; }
         body.aplicacion .cierre-ficha p { display: flex; justify-content: space-between; margin: 6px 0; }
         body.aplicacion input[readonly] { background: #f4f1e8; }
+        body.aplicacion .buscar input { max-width: none; }
         body.aplicacion .barra { display: flex; gap: 8px; }
         body.aplicacion .barra button { flex: 1; }
     </style>
