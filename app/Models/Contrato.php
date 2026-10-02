@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtegidoPorEmpresa;
+use App\Models\Concerns\RegistraCambios;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -11,7 +12,18 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Contrato extends Model
 {
-    use ProtegidoPorEmpresa;
+    use ProtegidoPorEmpresa, RegistraCambios;
+
+    public function contextoHistorial(): array
+    {
+        return [
+            'empresa_id' => $this->empresa_id,
+            'contrato_id' => $this->exists ? $this->id : null,
+            'frente_id' => null,
+            'planilla_rubro_id' => null,
+            'descripcion' => 'Contrato '.$this->codigo_proceso,
+        ];
+    }
 
     protected $fillable = [
         'empresa_id', 'entidad', 'numero_contrato', 'codigo_proceso', 'objeto',

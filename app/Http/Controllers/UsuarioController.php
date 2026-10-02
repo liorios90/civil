@@ -40,6 +40,7 @@ class UsuarioController extends Controller
             'password' => $datos['password'],
             'rol' => User::USUARIO,
             'empresa_id' => $request->user()->empresa_id,
+            'activo' => $datos['activo'],
         ]);
         $usuario->contratos()->sync($datos['contratos']);
 
@@ -64,6 +65,7 @@ class UsuarioController extends Controller
         $usuario->update([
             'name' => $datos['name'],
             'email' => $datos['email'],
+            'activo' => $datos['activo'],
         ] + (isset($datos['password']) ? ['password' => $datos['password']] : []));
         $usuario->contratos()->sync($datos['contratos']);
 
@@ -101,7 +103,7 @@ class UsuarioController extends Controller
     }
 
     /**
-     * @return array{name: string, email: string, password?: string, contratos: array<int, int>}
+     * @return array{name: string, email: string, password?: string, activo: bool, contratos: array<int, int>}
      */
     private function datos(Request $request, ?User $usuario, bool $passwordObligatoria): array
     {
@@ -109,6 +111,7 @@ class UsuarioController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($usuario?->id)],
             'password' => [$passwordObligatoria ? 'required' : 'nullable', 'string', 'min:8', 'confirmed'],
+            'activo' => ['required', 'boolean'],
             'contratos' => ['required', 'array', 'min:1'],
             'contratos.*' => ['integer', Rule::exists('contratos', 'id')->where('empresa_id', $request->user()->empresa_id)],
         ], [
@@ -125,6 +128,7 @@ class UsuarioController extends Controller
         $resultado = [
             'name' => $datos['name'],
             'email' => $datos['email'],
+            'activo' => $request->boolean('activo'),
             'contratos' => array_map('intval', $datos['contratos']),
         ];
         if (! empty($datos['password'])) {

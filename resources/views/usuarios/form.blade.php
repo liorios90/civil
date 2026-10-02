@@ -13,6 +13,9 @@
                 @endforeach
             </div>
         @endif
+        @php
+            $activo = old('activo', $usuario->exists ? ($usuario->activo ? '1' : '0') : '1');
+        @endphp
         <form method="post" action="{{ $usuario->exists ? route('usuarios.update', $usuario) : route('usuarios.store') }}">
             @csrf
             @if ($usuario->exists) @method('put') @endif
@@ -25,6 +28,11 @@
             @if ($usuario->exists)
                 <p>Deje la contraseña en blanco si no desea cambiarla.</p>
             @endif
+            <label class="check">
+                <input type="hidden" name="activo" value="0">
+                <input type="checkbox" name="activo" value="1" @checked((string) $activo === '1')>
+                Activo
+            </label>
             <h2>Contratos</h2>
             <p>Marque los contratos a los que este usuario puede entrar.</p>
             @forelse ($contratos as $contrato)

@@ -37,6 +37,16 @@ class SesionController extends Controller
             ])->onlyInput('email');
         }
 
+        if ($user->esUsuario() && ! $user->activo) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return back()->withErrors([
+                'email' => 'El usuario está inactivo.',
+            ])->onlyInput('email');
+        }
+
         return redirect()->intended(route('inicio'));
     }
 

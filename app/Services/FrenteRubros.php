@@ -36,11 +36,10 @@ class FrenteRubros
             );
         }
 
-        if ($numeros === []) {
-            $catalogo->rubros()->delete();
-        } else {
-            $catalogo->rubros()->whereNotIn('numero', $numeros)->delete();
-        }
+        $quitados = $numeros === []
+            ? $catalogo->rubros()
+            : $catalogo->rubros()->whereNotIn('numero', $numeros);
+        $quitados->get()->each->delete();
 
         if (! $reemplazarEnFrentes) {
             return;
@@ -75,7 +74,7 @@ class FrenteRubros
             $sobrantes = $numerosCatalogo === []
                 ? $frente->rubros()
                 : $frente->rubros()->whereNotIn('numero', $numerosCatalogo);
-            $sobrantes->delete();
+            $sobrantes->get()->each->delete();
         }
     }
 

@@ -3,12 +3,28 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtegidoPorEmpresa;
+use App\Models\Concerns\RegistraCambios;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class MedicionLinea extends Model
 {
-    use ProtegidoPorEmpresa;
+    use ProtegidoPorEmpresa, RegistraCambios;
+
+    public function contextoHistorial(): array
+    {
+        $ejecucion = $this->anexo?->planillaRubro;
+        $rubro = $ejecucion?->rubro;
+        $texto = $this->descripcion ? ' ('.Str::limit((string) $this->descripcion, 150).')' : '';
+
+        return [
+            'contrato_id' => $ejecucion?->planilla?->contrato_id,
+            'frente_id' => $rubro?->frente_id,
+            'planilla_rubro_id' => $ejecucion?->id,
+            'descripcion' => 'Medición '.$this->orden.$texto.' del rubro '.($rubro?->numero ?? '').': '.Str::limit((string) $rubro?->descripcion, 250),
+        ];
+    }
     protected $fillable = [
         'anexo_id', 'orden', 'descripcion', 'base1', 'base2', 'altura', 'numero',
         'longitud', 'area', 'volumen', 'total',

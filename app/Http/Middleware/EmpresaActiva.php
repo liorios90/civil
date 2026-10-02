@@ -26,6 +26,16 @@ class EmpresaActiva
                     'email' => 'La empresa está inactiva.',
                 ]);
             }
+
+            if ($user->esUsuario() && ! $user->activo) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return redirect()->route('ingresar')->withErrors([
+                    'email' => 'El usuario está inactivo.',
+                ]);
+            }
         }
 
         return $next($request);

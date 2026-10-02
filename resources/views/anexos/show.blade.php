@@ -15,6 +15,11 @@
         · Unidad {{ $ejecucion->rubro->unidad }}
         · Total a facturar: {{ number_format((float) $ejecucion->cantidad_actual, 2, '.', '') }}
     </div>
+    @include('historial.resumen', [
+        'creado' => null,
+        'filtro' => ['planilla_rubro_id' => $ejecucion->id],
+        'enlace' => route('historial.index', [$ejecucion->planilla->contrato, 'ejecucion' => $ejecucion->id]),
+    ])
 
     @php
         $imagenesOtras = $anexo->imagenes->filter(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
@@ -277,5 +282,45 @@
                 fila.querySelector('input')?.focus();
             });
         }
+        const claveMedicion = (campo) => ['b1', 'b2', 'altura', 'numero', 'total'].find((clase) => campo.classList.contains(clase))
+            || (campo.name.includes('[descripcion]') ? 'descripcion' : campo.name);
+        const camposMedicion = (fila) => [...fila.querySelectorAll('input:not([type="hidden"])')];
+        const enfocarMedicion = (campo) => {
+            if (!campo) return;
+            campo.focus();
+            campo.select();
+            campo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        };
+        document.querySelectorAll('table.hoja tbody, [data-lista]').forEach((lista) => {
+            const filasVisibles = () => [...lista.querySelectorAll('tr, [data-medicion]')].filter((fila) => !fila.hidden);
+            lista.addEventListener('keydown', (evento) => {
+                const campo = evento.target;
+                if (!(campo instanceof HTMLInputElement) || campo.type === 'hidden' || evento.altKey || evento.ctrlKey || evento.metaKey) return;
+                const horizontal = evento.key === 'ArrowLeft' || evento.key === 'ArrowRight';
+                const vertical = evento.key === 'ArrowUp' || evento.key === 'ArrowDown';
+                if (!horizontal && !vertical) return;
+                if (horizontal && campo.selectionStart != null) {
+                    const completo = campo.selectionStart === 0 && campo.selectionEnd === campo.value.length;
+                    const izquierda = evento.key === 'ArrowLeft' && campo.selectionStart === 0 && campo.selectionEnd === 0;
+                    const derecha = evento.key === 'ArrowRight' && campo.selectionStart === campo.value.length;
+                    if (!completo && !izquierda && !derecha) return;
+                }
+                const fila = campo.closest('[data-medicion], tr');
+                const filas = filasVisibles();
+                const posicion = filas.indexOf(fila);
+                if (!fila || posicion < 0) return;
+                evento.preventDefault();
+                const deltaFila = evento.key === 'ArrowUp' ? -1 : (evento.key === 'ArrowDown' ? 1 : 0);
+                const deltaCampo = evento.key === 'ArrowLeft' ? -1 : (evento.key === 'ArrowRight' ? 1 : 0);
+                const destinoFila = filas[posicion + deltaFila];
+                if (!destinoFila) return;
+                const destinos = camposMedicion(destinoFila);
+                if (deltaFila !== 0) {
+                    enfocarMedicion(destinos.find((destino) => claveMedicion(destino) === claveMedicion(campo)));
+                    return;
+                }
+                enfocarMedicion(destinos[camposMedicion(fila).indexOf(campo) + deltaCampo]);
+            });
+        });
     </script>
 @endsection

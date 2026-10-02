@@ -39,7 +39,7 @@ class AnexoController extends Controller
         ])['lineas'] ?? [];
 
         $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
-        $anexo->lineas()->delete();
+        $existentes = $anexo->lineas()->get()->values();
         $orden = 1;
 
         foreach ($lineas as $linea) {
@@ -48,8 +48,8 @@ class AnexoController extends Controller
             if ($descripcion === '' && $calculada['total'] == 0.0) {
                 continue;
             }
-            $anexo->lineas()->create([
-                'orden' => $orden++,
+            $valores = [
+                'orden' => $orden,
                 'descripcion' => $descripcion !== '' ? $descripcion : null,
                 'base1' => $linea['base1'] ?? null,
                 'base2' => $linea['base2'] ?? null,
@@ -59,8 +59,17 @@ class AnexoController extends Controller
                 'area' => $calculada['area'],
                 'volumen' => $calculada['volumen'],
                 'total' => $calculada['total'],
-            ]);
+            ];
+            $actual = $existentes->get($orden - 1);
+            if ($actual) {
+                $actual->setRelation('anexo', $anexo)->fill($valores)->save();
+            } else {
+                $anexo->lineas()->create($valores);
+            }
+            $orden++;
         }
+
+        $existentes->slice($orden - 1)->each(fn (MedicionLinea $sobrante) => $sobrante->setRelation('anexo', $anexo)->delete());
 
         $calculator->sincronizarCantidadActual($ejecucion);
 

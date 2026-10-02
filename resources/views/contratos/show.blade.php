@@ -21,6 +21,7 @@
                 <a class="btn" href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a>
                 <a class="btn" href="{{ route('avance.comparacion', $planilla) }}">Comparar avance</a>
             @endif
+            <a class="btn" href="{{ route('historial.index', $contrato) }}">Historial</a>
         </div>
     </div>
     @if (auth()->user()->esAdministrador())

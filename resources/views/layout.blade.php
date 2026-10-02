@@ -36,6 +36,17 @@
         .buscar { margin: 0 0 10px; }
         .buscar input { max-width: 420px; }
         [data-sin-rubros] { margin: 0 0 10px; color: #4a5b6d; }
+        .registro { font-size: 13px; color: #4a5b6d; margin: 0 0 12px; }
+        .filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; margin: 12px 0; }
+        .filtros label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+        select { border: 1px solid #c5d0db; border-radius: 6px; padding: 6px 8px; width: 100%; background: #fff; }
+        .historial { overflow-x: auto; }
+        .historial td { vertical-align: top; }
+        .historial td.fecha { white-space: nowrap; }
+        .accion { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; white-space: nowrap; }
+        .accion-creado { background: #e6f4ea; color: #1e6b34; }
+        .accion-modificado { background: #e8eef5; color: #0f3d68; }
+        .accion-eliminado { background: #fbe9e9; color: #9b1c1c; }
         .danger { background: transparent; color: #9b1c1c; padding: 0; }
         .btn-rojo { background: #9b1c1c; }
         .acciones { display: flex; gap: 8px; align-items: center; }
@@ -98,6 +109,7 @@
         <div class="cabecera-acciones">
             @if (auth()->user()->esAdministrador())
                 <a class="btn" href="{{ route('usuarios.index') }}">Usuarios</a>
+                <a class="btn" href="{{ route('historial.general') }}">Historial</a>
                 <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
             @endif
             @if (auth()->user()->esSistemas())

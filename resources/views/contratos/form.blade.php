@@ -53,6 +53,13 @@
                     }
                 @endphp
                 <h2>Rubros del contrato</h2>
+                @if ($contrato->exists && ($catalogoRubros = $contrato->catalogo()->first()))
+                    @include('historial.resumen', [
+                        'creado' => null,
+                        'filtro' => ['frente_id' => $catalogoRubros->id],
+                        'enlace' => route('historial.index', [$contrato, 'frente' => $catalogoRubros->id]),
+                    ])
+                @endif
                 <p>Estos rubros son solo de este contrato. Se copian al crear una planilla. Eliminar quita el rubro de este contrato; las planillas que ya existen no cambian.</p>
                 @unless ($contrato->exists)
                     <p><label>Subir desde Excel<input type="file" name="rubros_excel" accept=".xlsx,.xls"></label></p>
@@ -203,6 +210,44 @@
                 buscar.addEventListener('input', filtrar);
                 buscar.addEventListener('keydown', (evento) => {
                     if (evento.key === 'Enter') evento.preventDefault();
+                });
+                const claveCampo = (campo) => ['u', 'cant', 'precio'].find((clase) => campo.classList.contains(clase))
+                    || (campo.name.includes('[descripcion]') ? 'descripcion' : campo.name);
+                const camposDe = (fila) => [...fila.querySelectorAll('input:not([type="hidden"])')];
+                const filasVisibles = () => [...tbody.querySelectorAll('[data-fila]')].filter((fila) => !fila.hidden);
+                const enfocar = (campo) => {
+                    if (!campo) return;
+                    campo.focus();
+                    campo.select();
+                    campo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                };
+                tbody.addEventListener('keydown', (evento) => {
+                    const campo = evento.target;
+                    if (!(campo instanceof HTMLInputElement) || campo.type === 'hidden' || evento.altKey || evento.ctrlKey || evento.metaKey) return;
+                    const horizontal = evento.key === 'ArrowLeft' || evento.key === 'ArrowRight';
+                    const vertical = evento.key === 'ArrowUp' || evento.key === 'ArrowDown';
+                    if (!horizontal && !vertical) return;
+                    if (horizontal && campo.selectionStart != null) {
+                        const completo = campo.selectionStart === 0 && campo.selectionEnd === campo.value.length;
+                        const izquierda = evento.key === 'ArrowLeft' && campo.selectionStart === 0 && campo.selectionEnd === 0;
+                        const derecha = evento.key === 'ArrowRight' && campo.selectionStart === campo.value.length;
+                        if (!completo && !izquierda && !derecha) return;
+                    }
+                    const fila = campo.closest('[data-fila]');
+                    const filas = filasVisibles();
+                    const posicion = filas.indexOf(fila);
+                    if (!fila || posicion < 0) return;
+                    evento.preventDefault();
+                    const deltaFila = evento.key === 'ArrowUp' ? -1 : (evento.key === 'ArrowDown' ? 1 : 0);
+                    const deltaCampo = evento.key === 'ArrowLeft' ? -1 : (evento.key === 'ArrowRight' ? 1 : 0);
+                    const destinoFila = filas[posicion + deltaFila];
+                    if (!destinoFila) return;
+                    const destinos = camposDe(destinoFila);
+                    if (deltaFila !== 0) {
+                        enfocar(destinos.find((destino) => claveCampo(destino) === claveCampo(campo)));
+                        return;
+                    }
+                    enfocar(destinos[camposDe(fila).indexOf(campo) + deltaCampo]);
                 });
             </script>
         @endif

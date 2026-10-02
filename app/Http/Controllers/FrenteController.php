@@ -6,6 +6,7 @@ use App\Models\Contrato;
 use App\Models\Frente;
 use App\Models\PlanillaRubro;
 use App\Services\FrenteRubros;
+use App\Services\Historial;
 use App\Services\PlanillaCalculator;
 use Illuminate\Http\Request;
 
@@ -23,7 +24,7 @@ class FrenteController extends Controller
             'numero' => $orden,
             'orden' => $orden,
         ]);
-        $catalogo->clonarDesdeAnterior($frente);
+        Historial::sinRegistro(fn () => $catalogo->clonarDesdeAnterior($frente));
 
         return redirect()->route('frentes.show', $frente)->with('estado', 'Frente creado. Aquí van sus rubros y cantidades.');
     }

@@ -18,6 +18,7 @@
             <div>
                 <h2>{{ $usuario->name }}</h2>
                 <p>{{ $usuario->email }}</p>
+                <p>{{ $usuario->activo ? 'Activo' : 'Inactivo' }}</p>
                 <p>{{ $usuario->contratos->pluck('codigo_proceso')->join(', ') ?: 'Sin contratos' }}</p>
             </div>
             <div class="acciones">

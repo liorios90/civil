@@ -3,13 +3,25 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtegidoPorEmpresa;
+use App\Models\Concerns\RegistraCambios;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Frente extends Model
 {
-    use ProtegidoPorEmpresa;
+    use ProtegidoPorEmpresa, RegistraCambios;
+
+    public function contextoHistorial(): array
+    {
+        return [
+            'contrato_id' => $this->contrato_id,
+            'frente_id' => $this->id,
+            'planilla_rubro_id' => null,
+            'descripcion' => ($this->es_catalogo ? 'Catálogo de rubros' : 'Planilla: '.Str::limit((string) $this->nombre, 400)),
+        ];
+    }
     protected $fillable = ['contrato_id', 'numero', 'nombre', 'orden', 'es_catalogo'];
 
     protected function casts(): array

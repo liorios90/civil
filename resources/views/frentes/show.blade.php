@@ -23,6 +23,11 @@
     @else
         <div class="card"><h1>{{ $frente->nombre }}</h1></div>
     @endif
+    @include('historial.resumen', [
+        'creado' => $frente,
+        'filtro' => ['frente_id' => $frente->id],
+        'enlace' => route('historial.index', [$frente->contrato, 'frente' => $frente->id]),
+    ])
     @php
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
@@ -335,6 +340,48 @@
             });
         };
         lista.querySelectorAll('[data-fila]').forEach(enlazar);
+        const claveCampo = (campo) => ['contratada', 'unitario', 'anterior', 'actual', 'u'].find((clase) => campo.classList.contains(clase))
+            || (campo.name.includes('[descripcion]') ? 'descripcion' : campo.name);
+        const camposDe = (fila) => [...fila.querySelectorAll('input:not([type="hidden"])')];
+        const filasVisibles = () => [...lista.querySelectorAll('[data-fila]')].filter((fila) => !fila.hidden);
+        const enfocar = (campo) => {
+            if (!campo) return;
+            campo.focus();
+            campo.select();
+            campo.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        };
+        const moverCampo = (actual, deltaFila, deltaCampo) => {
+            const filas = filasVisibles();
+            const fila = actual.closest('[data-fila]');
+            const posicion = filas.indexOf(fila);
+            if (posicion < 0) return;
+            const destinoFila = filas[posicion + deltaFila];
+            if (!destinoFila) return;
+            const destinos = camposDe(destinoFila);
+            if (deltaFila !== 0) {
+                enfocar(destinos.find((campo) => claveCampo(campo) === claveCampo(actual)));
+                return;
+            }
+            enfocar(destinos[camposDe(fila).indexOf(actual) + deltaCampo]);
+        };
+        lista.addEventListener('keydown', (evento) => {
+            const campo = evento.target;
+            if (!(campo instanceof HTMLInputElement) || campo.type === 'hidden' || evento.altKey || evento.ctrlKey || evento.metaKey) return;
+            const horizontal = evento.key === 'ArrowLeft' || evento.key === 'ArrowRight';
+            const vertical = evento.key === 'ArrowUp' || evento.key === 'ArrowDown';
+            if (!horizontal && !vertical) return;
+            if (horizontal && campo.selectionStart != null) {
+                const completo = campo.selectionStart === 0 && campo.selectionEnd === campo.value.length;
+                const izquierda = evento.key === 'ArrowLeft' && campo.selectionStart === 0 && campo.selectionEnd === 0;
+                const derecha = evento.key === 'ArrowRight' && campo.selectionStart === campo.value.length;
+                if (!completo && !izquierda && !derecha) return;
+            }
+            evento.preventDefault();
+            if (evento.key === 'ArrowUp') moverCampo(campo, -1, 0);
+            if (evento.key === 'ArrowDown') moverCampo(campo, 1, 0);
+            if (evento.key === 'ArrowLeft') moverCampo(campo, 0, -1);
+            if (evento.key === 'ArrowRight') moverCampo(campo, 0, 1);
+        });
         const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
             const coincidencia = campo.name.match(/filas\[(\d+)\]/);
             return coincidencia ? Number(coincidencia[1]) : -1;

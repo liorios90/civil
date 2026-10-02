@@ -3,13 +3,25 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtegidoPorEmpresa;
+use App\Models\Concerns\RegistraCambios;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Rubro extends Model
 {
-    use ProtegidoPorEmpresa;
+    use ProtegidoPorEmpresa, RegistraCambios;
+
+    public function contextoHistorial(): array
+    {
+        return [
+            'contrato_id' => $this->frente?->contrato_id,
+            'frente_id' => $this->frente_id,
+            'planilla_rubro_id' => null,
+            'descripcion' => 'Rubro '.$this->numero.': '.Str::limit((string) $this->descripcion, 400),
+        ];
+    }
     protected $fillable = [
         'frente_id', 'numero', 'codigo', 'descripcion', 'unidad',
         'cantidad_contratada', 'precio_unitario', 'tipo_hoja',

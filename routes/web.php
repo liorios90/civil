@@ -4,6 +4,7 @@ use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\FrenteController;
+use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImpresionController;
 use App\Http\Controllers\InicioController;
 use App\Http\Controllers\RubroController;
@@ -35,6 +36,7 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::get('/usuarios/{usuario}/editar', [UsuarioController::class, 'edit'])->name('usuarios.edit');
         Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
         Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
+        Route::get('/historial', [HistorialController::class, 'general'])->name('historial.general');
 
         Route::get('/contratos/nuevo', [ContratoController::class, 'create'])->name('contratos.create');
         Route::post('/contratos', [ContratoController::class, 'store'])->name('contratos.store');
@@ -55,6 +57,7 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
 
     Route::middleware('rol:administrador,usuario')->group(function () {
         Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
+        Route::get('/contratos/{contrato}/historial', [HistorialController::class, 'index'])->name('historial.index');
         Route::get('/frentes/{frente}', [FrenteController::class, 'show'])->name('frentes.show');
         Route::post('/frentes/{frente}/hoja', [RubroController::class, 'guardar'])->name('rubros.guardar');
 

@@ -3,13 +3,24 @@
 namespace App\Models;
 
 use App\Models\Concerns\ProtegidoPorEmpresa;
+use App\Models\Concerns\RegistraCambios;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Planilla extends Model
 {
-    use ProtegidoPorEmpresa;
+    use ProtegidoPorEmpresa, RegistraCambios;
+
+    public function contextoHistorial(): array
+    {
+        return [
+            'contrato_id' => $this->contrato_id,
+            'frente_id' => null,
+            'planilla_rubro_id' => null,
+            'descripcion' => 'Período de planilla '.$this->numero,
+        ];
+    }
     protected $fillable = [
         'contrato_id', 'numero', 'periodo_desde', 'periodo_hasta',
         'estado', 'iva_porcentaje', 'descuentos', 'multas',
