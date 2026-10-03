@@ -46,6 +46,13 @@ class ChatController extends Controller
         return response()->json($this->presentar($mensaje, $yo));
     }
 
+    public function sinLeer(Request $request)
+    {
+        return response()->json([
+            'sin_leer' => $this->sinLeerTotal($request->user()),
+        ]);
+    }
+
     public function novedades(Request $request)
     {
         $yo = $request->user();

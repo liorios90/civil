@@ -64,7 +64,7 @@
         .estado-planilla.aprobada { background: #e5f4e4; color: #1d6b32; }
         .aviso { display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #25d366; color: #fff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; }
         .aviso[hidden] { display: none; }
-        header a .aviso { color: #fff; margin-left: 6px; }
+        header a .aviso, .chat-lista h1 .aviso { color: #fff; margin-left: 6px; vertical-align: middle; }
         @media (max-width: 800px) { .tablero { grid-template-columns: 1fr 1fr; } }
         .fila { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
         .opciones { display: grid; gap: 8px; }
@@ -114,7 +114,7 @@
         body.aplicacion .barra button { flex: 1; }
     </style>
 </head>
-<body @class(['aplicacion' => str_contains((string) request()->userAgent(), 'PlanillasApp')])>
+<body @class(['aplicacion' => str_contains((string) request()->userAgent(), 'PlanillasApp'), 'pagina-mensajes' => request()->routeIs('mensajes.*')])>
 <header>
     <a href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
     @auth
@@ -143,5 +143,34 @@
 <main>
     @yield('contenido')
 </main>
+@auth
+    @if ((auth()->user()->esAdministrador() || auth()->user()->esUsuario()) && ! request()->routeIs('mensajes.*'))
+        <script>
+            const avisosMensajes = document.getElementById('avisos-mensajes');
+            if (avisosMensajes) {
+                const pintarAvisos = (cantidad) => {
+                    if (cantidad > 0) {
+                        avisosMensajes.hidden = false;
+                        avisosMensajes.textContent = cantidad > 99 ? '99+' : String(cantidad);
+                    } else {
+                        avisosMensajes.hidden = true;
+                        avisosMensajes.textContent = '';
+                    }
+                };
+                const consultarAvisos = async () => {
+                    try {
+                        const respuesta = await fetch(@json(route('mensajes.sin-leer')), {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        });
+                        if (!respuesta.ok) return;
+                        const datos = await respuesta.json();
+                        pintarAvisos(Number(datos.sin_leer) || 0);
+                    } catch (e) {}
+                };
+                setInterval(consultarAvisos, 3000);
+            }
+        </script>
+    @endif
+@endauth
 </body>
 </html>

@@ -4,8 +4,10 @@
 
 @section('contenido')
     <style>
-        .chat { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: calc(100vh - 196px); min-height: 420px; background: #fff; border: 1px solid #d5dde5; border-radius: 8px; overflow: hidden; }
-        .chat-lista { background: #fff; border-right: 1px solid #e4e8ec; overflow: auto; }
+        body.pagina-mensajes { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+        body.pagina-mensajes main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px; overflow: hidden; }
+        .chat { display: grid; grid-template-columns: 320px minmax(0, 1fr); flex: 1; min-height: 0; background: #fff; border: 1px solid #d5dde5; border-radius: 8px; overflow: hidden; }
+        .chat-lista { background: #fff; border-right: 1px solid #e4e8ec; overflow: auto; min-height: 0; }
         .chat-lista h1 { font-size: 18px; margin: 0; padding: 14px 16px; background: #f0f2f5; }
         .chat-lista a.persona { display: flex; gap: 10px; align-items: center; padding: 12px 14px; text-decoration: none; color: inherit; border-bottom: 1px solid #f0f2f5; }
         .chat-lista a.persona.activo, .chat-lista a.persona:hover { background: #f0f2f5; }
@@ -17,24 +19,24 @@
         .chat-lista .lado { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
         .chat-lista .lado time { color: #667781; font-size: 11px; }
         .chat-vacio { padding: 16px; color: #667781; }
-        .chat-lado { display: flex; flex-direction: column; background: #efeae2; min-width: 0; }
+        .chat-lado { display: flex; flex-direction: column; background: #efeae2; min-width: 0; min-height: 0; }
         .chat-cabeza { display: flex; gap: 10px; align-items: center; background: #f0f2f5; padding: 10px 14px; border-bottom: 1px solid #e4e8ec; }
         .chat-cabeza strong { display: block; }
         .chat-cabeza small { color: #667781; }
         .chat-cabeza .volver { display: none; color: #0f3d68; text-decoration: none; font-size: 20px; line-height: 1; }
-        .hilo { flex: 1; overflow: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+        .hilo { flex: 1; min-height: 0; overflow: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; }
         .burbuja { max-width: min(78%, 520px); background: #fff; border-radius: 8px; padding: 6px 8px 4px; align-self: flex-start; box-shadow: 0 1px 0.5px rgba(0, 0, 0, .13); }
         .burbuja.mia { align-self: flex-end; background: #d9fdd3; }
         .burbuja p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
         .burbuja time { display: block; text-align: right; color: #667781; font-size: 11px; margin-top: 2px; }
-        .chat-forma { display: flex; gap: 8px; align-items: flex-end; padding: 10px; background: #f0f2f5; }
+        .chat-forma { display: flex; gap: 8px; align-items: flex-end; padding: 10px; background: #f0f2f5; flex: none; }
         .chat-forma textarea { flex: 1; min-height: 42px; max-height: 120px; resize: none; margin: 0; border-radius: 8px; padding: 10px 12px; background: #fff; }
         .chat-forma button { background: #00a884; border-radius: 50%; width: 42px; height: 42px; padding: 0; font-size: 18px; }
         .chat-espera { flex: 1; display: flex; align-items: center; justify-content: center; color: #667781; padding: 24px; text-align: center; }
         .chat-error { color: #9b1c1c; font-size: 12px; margin: 0 10px 8px; }
-        .chat-regreso { margin: 0 0 10px; }
+        .chat-regreso { margin: 0 0 8px; flex: none; }
         @media (max-width: 800px) {
-            .chat { grid-template-columns: 1fr; height: calc(100vh - 220px); }
+            .chat { grid-template-columns: 1fr; }
             .chat.abierto .chat-lista { display: none; }
             .chat:not(.abierto) .chat-lado { display: none; }
             .chat-cabeza .volver { display: inline; }
@@ -49,7 +51,8 @@
         data-novedades="{{ route('mensajes.novedades') }}"
         data-enviar="{{ $abierto ? route('mensajes.enviar', $abierto) : '' }}">
         <aside class="chat-lista">
-            <h1>Mensajes</h1>
+            @php($sinLeerLista = $filas->sum('sin_leer'))
+            <h1>Mensajes <span class="aviso" id="avisos-lista" @if ($sinLeerLista < 1) hidden @endif>@if ($sinLeerLista > 0){{ $sinLeerLista > 99 ? '99+' : $sinLeerLista }}@endif</span></h1>
             @forelse ($filas as $fila)
                 @php($contacto = $fila['contacto'])
                 @php($ultimo = $fila['ultimo'])
@@ -154,6 +157,7 @@
                 const datos = await respuesta.json();
                 datos.mensajes.forEach(agregar);
                 aviso(document.getElementById('avisos-mensajes'), datos.sin_leer);
+                aviso(document.getElementById('avisos-lista'), datos.sin_leer);
                 datos.contactos.forEach((contacto) => {
                     const fila = chat.querySelector('[data-contacto="' + contacto.id + '"]');
                     if (!fila) return;

@@ -65,6 +65,7 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
 
     Route::middleware('rol:administrador,usuario')->group(function () {
         Route::get('/mensajes', [ChatController::class, 'index'])->name('mensajes.index');
+        Route::get('/mensajes/sin-leer', [ChatController::class, 'sinLeer'])->name('mensajes.sin-leer');
         Route::get('/mensajes/novedades', [ChatController::class, 'novedades'])->name('mensajes.novedades');
         Route::get('/mensajes/{usuario}', [ChatController::class, 'show'])->whereNumber('usuario')->name('mensajes.show');
         Route::post('/mensajes/{usuario}', [ChatController::class, 'enviar'])->whereNumber('usuario')->middleware('throttle:60,1')->name('mensajes.enviar');
