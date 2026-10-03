@@ -5,6 +5,7 @@
 @section('contenido')
     <style>
         body.pagina-mensajes { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+        body.pagina-mensajes header { flex: none; }
         body.pagina-mensajes main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px; overflow: hidden; }
         .chat { display: grid; grid-template-columns: 320px minmax(0, 1fr); flex: 1; min-height: 0; background: #fff; border: 1px solid #d5dde5; border-radius: 8px; overflow: hidden; }
         .chat-lista { background: #fff; border-right: 1px solid #e4e8ec; overflow: auto; min-height: 0; }

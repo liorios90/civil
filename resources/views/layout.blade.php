@@ -9,7 +9,7 @@
         :root { color-scheme: light; }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f4f6f8; color: #1c2430; }
-        header { background: #0f3d68; color: #fff; padding: 16px 24px; }
+        header { background: #0f3d68; color: #fff; padding: 16px 24px; position: sticky; top: 0; z-index: 40; }
         header a { color: #fff; text-decoration: none; }
         header small { display: block; clear: both; opacity: .8; margin-top: 4px; }
         main { padding: 24px; }
@@ -31,7 +31,8 @@
         input { border: 1px solid #c5d0db; border-radius: 6px; padding: 6px 8px; width: 100%; }
         input[type="checkbox"] { width: auto; }
         label.check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; }
-        .cabecera-acciones { float: right; display: flex; gap: 8px; align-items: center; }
+        .cabecera-acciones { float: right; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; max-width: 100%; }
+        .cabecera-acciones .btn, .cabecera-acciones button { flex: none; white-space: nowrap; }
         .cabecera-acciones form { margin: 0; }
         .alerta { background: #fff4e5; border: 1px solid #f0d3a2; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
         .buscar { margin: 0 0 10px; }
@@ -65,6 +66,7 @@
         .aviso { display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #25d366; color: #fff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; }
         .aviso[hidden] { display: none; }
         header a .aviso, .chat-lista h1 .aviso { color: #fff; margin-left: 6px; vertical-align: middle; }
+        body.aplicacion header a .aviso { min-width: 22px; height: 22px; font-size: 13px; }
         @media (max-width: 800px) { .tablero { grid-template-columns: 1fr 1fr; } }
         .fila { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
         .opciones { display: grid; gap: 8px; }
@@ -96,7 +98,12 @@
         .galeria figure { margin: 0; background: #fff; border: 1px solid #d5dde5; padding: 8px; }
         .galeria img { width: 180px; height: 140px; object-fit: cover; display: block; }
         body.aplicacion main { padding: 12px; }
-        body.aplicacion header .btn { float: none; display: inline-block; margin-top: 10px; }
+        body.aplicacion header .btn { float: none; display: inline-block; }
+        @media (max-width: 800px) {
+            header { padding: 12px 14px; }
+            .cabecera-acciones { float: none; clear: both; width: 100%; margin-top: 10px; justify-content: flex-start; }
+            header small { margin-top: 8px; }
+        }
         body.aplicacion .fila { flex-wrap: wrap; }
         body.aplicacion .ficha { background: #fff; border: 1px solid #d5dde5; border-radius: 10px; padding: 12px; margin: 0 0 12px; }
         body.aplicacion .ficha-titulo { display: flex; gap: 8px; align-items: flex-start; }
@@ -144,29 +151,36 @@
     @yield('contenido')
 </main>
 @auth
-    @if ((auth()->user()->esAdministrador() || auth()->user()->esUsuario()) && ! request()->routeIs('mensajes.*'))
+    @if (auth()->user()->esAdministrador() || auth()->user()->esUsuario())
         <script>
             const avisosMensajes = document.getElementById('avisos-mensajes');
             if (avisosMensajes) {
+                let consultandoAvisos = false;
                 const pintarAvisos = (cantidad) => {
-                    if (cantidad > 0) {
-                        avisosMensajes.hidden = false;
-                        avisosMensajes.textContent = cantidad > 99 ? '99+' : String(cantidad);
-                    } else {
-                        avisosMensajes.hidden = true;
-                        avisosMensajes.textContent = '';
-                    }
+                    const total = Number(cantidad) || 0;
+                    avisosMensajes.hidden = total < 1;
+                    avisosMensajes.textContent = total > 0 ? (total > 99 ? '99+' : String(total)) : '';
                 };
                 const consultarAvisos = async () => {
+                    if (consultandoAvisos || document.visibilityState === 'hidden') return;
+                    consultandoAvisos = true;
                     try {
                         const respuesta = await fetch(@json(route('mensajes.sin-leer')), {
                             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            cache: 'no-store',
                         });
                         if (!respuesta.ok) return;
                         const datos = await respuesta.json();
-                        pintarAvisos(Number(datos.sin_leer) || 0);
-                    } catch (e) {}
+                        pintarAvisos(datos.sin_leer);
+                    } catch (e) {
+                    } finally {
+                        consultandoAvisos = false;
+                    }
                 };
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') consultarAvisos();
+                });
+                window.addEventListener('pageshow', consultarAvisos);
                 setInterval(consultarAvisos, 3000);
             }
         </script>
