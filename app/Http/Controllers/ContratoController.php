@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AnexoImagen;
 use App\Models\Contrato;
+use App\Models\Planilla;
 use App\Models\Rubro;
 use App\Services\FrenteRubros;
 use App\Services\PlanillaCalculator;
 use App\Services\RubrosExcel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ContratoController extends Controller
@@ -93,6 +96,67 @@ class ContratoController extends Controller
         $planilla->update(['estado' => 'borrador']);
 
         return redirect()->route('contratos.show', $contrato)->with('estado', 'La planilla volvió a elaboración.');
+    }
+
+    public function abrirSiguiente(Contrato $contrato, PlanillaCalculator $calculator)
+    {
+        $actual = $this->planillaActual($contrato);
+        abort_unless($actual->estado === 'aprobada', 404);
+
+        $numero = str_pad((string) ((int) $actual->numero + 1), 2, '0', STR_PAD_LEFT);
+        $nueva = $contrato->planillas()->create([
+            'numero' => $numero,
+            'estado' => 'borrador',
+            'iva_porcentaje' => $actual->iva_porcentaje,
+        ]);
+
+        $rubros = Rubro::query()
+            ->whereHas('frente', fn ($consulta) => $consulta->where('contrato_id', $contrato->id)->where('es_catalogo', false))
+            ->get();
+
+        foreach ($rubros as $rubro) {
+            $nueva->ejecuciones()->create([
+                'rubro_id' => $rubro->id,
+                'cantidad_anterior' => $calculator->anteriorPagado($nueva, $rubro->id),
+                'cantidad_actual' => 0,
+            ]);
+        }
+
+        return redirect()
+            ->route('contratos.show', $contrato)
+            ->with('estado', 'Planilla '.$numero.' abierta. El anterior arrastra el total de la planilla anterior y este período empieza en cero.');
+    }
+
+    public function eliminarPlanilla(Contrato $contrato, Planilla $planilla)
+    {
+        abort_unless($planilla->contrato_id === $contrato->id, 404);
+        $ultima = $contrato->planillas()->latest('id')->first();
+        abort_unless($ultima && $ultima->id === $planilla->id, 404);
+
+        $numero = $planilla->numero;
+        $eraLaUnica = $contrato->planillas()->count() === 1;
+        $rutas = AnexoImagen::query()
+            ->whereHas('anexo', fn ($anexo) => $anexo->whereHas(
+                'planillaRubro',
+                fn ($ejecucion) => $ejecucion->where('planilla_id', $planilla->id),
+            ))
+            ->pluck('ruta');
+        Storage::disk('public')->delete($rutas->all());
+        $planilla->delete();
+
+        if ($eraLaUnica) {
+            $contrato->planillas()->create([
+                'numero' => '01',
+                'estado' => 'borrador',
+                'iva_porcentaje' => 12,
+            ]);
+        }
+
+        return redirect()
+            ->route('contratos.show', $contrato)
+            ->with('estado', $eraLaUnica
+                ? 'Planilla '.$numero.' eliminada. El contrato queda con una planilla 01 vacía.'
+                : 'Planilla '.$numero.' eliminada. Las planillas anteriores quedan igual.');
     }
 
     public function enlace(Request $request, Contrato $contrato)

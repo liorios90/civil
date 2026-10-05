@@ -7,6 +7,7 @@ use App\Models\MedicionLinea;
 use App\Models\PlanillaRubro;
 use App\Services\PlanillaCalculator;
 use App\Services\UnidadMedicion;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -29,6 +30,10 @@ class AnexoController extends Controller
 
     public function guardar(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
+        if ($respuesta = $this->rechazarSiCerrada($ejecucion)) {
+            return $respuesta;
+        }
+
         $lineas = $request->validate([
             'lineas' => ['nullable', 'array'],
             'lineas.*.descripcion' => ['nullable', 'string', 'max:255'],
@@ -112,6 +117,18 @@ class AnexoController extends Controller
         ];
     }
 
+    private function rechazarSiCerrada(PlanillaRubro $ejecucion): ?RedirectResponse
+    {
+        $ejecucion->loadMissing('planilla');
+        if (($ejecucion->planilla->estado ?: 'borrador') === 'borrador') {
+            return null;
+        }
+
+        return redirect()
+            ->route('anexos.show', $ejecucion)
+            ->with('estado', 'Esta planilla ya no está en elaboración. Las mediciones no cambian.');
+    }
+
     private function numero(mixed $valor): ?float
     {
         if ($valor === null || $valor === '') {
@@ -123,6 +140,10 @@ class AnexoController extends Controller
 
     public function imagenes(Request $request, PlanillaRubro $ejecucion)
     {
+        if ($respuesta = $this->rechazarSiCerrada($ejecucion)) {
+            return $respuesta;
+        }
+
         $data = $request->validate([
             'seccion' => ['required', 'in:inicial,otras'],
             'imagenes' => ['nullable', 'array'],
@@ -158,6 +179,10 @@ class AnexoController extends Controller
 
     public function destroyImagen(PlanillaRubro $ejecucion, AnexoImagen $imagen)
     {
+        if ($respuesta = $this->rechazarSiCerrada($ejecucion)) {
+            return $respuesta;
+        }
+
         abort_unless($imagen->anexo->planilla_rubro_id === $ejecucion->id, 404);
         Storage::disk('public')->delete($imagen->ruta);
         $imagen->delete();
@@ -188,6 +213,10 @@ class AnexoController extends Controller
 
     public function store(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
+        if ($respuesta = $this->rechazarSiCerrada($ejecucion)) {
+            return $respuesta;
+        }
+
         $data = $request->validate([
             'descripcion' => ['nullable', 'string', 'max:255'],
             'base1' => ['nullable', 'numeric'],
@@ -214,6 +243,10 @@ class AnexoController extends Controller
 
     public function destroy(PlanillaRubro $ejecucion, MedicionLinea $linea, PlanillaCalculator $calculator)
     {
+        if ($respuesta = $this->rechazarSiCerrada($ejecucion)) {
+            return $respuesta;
+        }
+
         abort_unless($linea->anexo->planilla_rubro_id === $ejecucion->id, 404);
         $linea->delete();
         $calculator->sincronizarCantidadActual($ejecucion);

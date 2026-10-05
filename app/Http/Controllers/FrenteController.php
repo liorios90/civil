@@ -34,13 +34,16 @@ class FrenteController extends Controller
         $frente->load('contrato.planillas', 'rubros');
         $planilla = $frente->contrato->planillas->sortByDesc('id')->first();
         $ejecuciones = collect();
-        if ($planilla) {
+        if ($planilla && ($planilla->estado ?: 'borrador') === 'borrador') {
             foreach ($frente->rubros as $rubro) {
                 $planilla->ejecuciones()->firstOrCreate(
                     ['rubro_id' => $rubro->id],
-                    ['cantidad_anterior' => 0, 'cantidad_actual' => 0],
+                    ['cantidad_anterior' => $calculator->anteriorPagado($planilla, $rubro->id), 'cantidad_actual' => 0],
                 );
             }
+            $calculator->fijarAnteriores($planilla);
+        }
+        if ($planilla) {
             $ejecuciones = PlanillaRubro::with('anexos.lineas')
                 ->where('planilla_id', $planilla->id)
                 ->whereIn('rubro_id', $frente->rubros->pluck('id'))
@@ -91,6 +94,13 @@ class FrenteController extends Controller
     public function destroy(Frente $frente)
     {
         $contrato = $frente->contrato;
+        $ultima = $contrato->frentes()->orderByDesc('orden')->first();
+        if (! $ultima || $ultima->id !== $frente->id) {
+            return redirect()
+                ->route('frentes.show', $frente)
+                ->with('estado', 'Solo se puede eliminar la última planilla.');
+        }
+
         $frente->delete();
 
         return redirect()->route('contratos.show', $contrato);

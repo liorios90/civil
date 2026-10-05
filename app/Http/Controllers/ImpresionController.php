@@ -48,6 +48,7 @@ class ImpresionController extends Controller
      */
     private function liquidacion(Planilla $planilla, PlanillaCalculator $calculator): array
     {
+        $calculator->fijarAnteriores($planilla);
         $liquidacion = $calculator->liquidar($planilla);
         $liquidacion['frentes'] = collect($liquidacion['frentes'])
             ->sortBy(fn ($grupo) => $grupo['frente']->orden)

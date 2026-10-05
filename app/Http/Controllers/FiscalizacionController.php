@@ -91,6 +91,7 @@ class FiscalizacionController extends Controller
      */
     private function liquidacion($planilla, PlanillaCalculator $calculator): array
     {
+        $calculator->fijarAnteriores($planilla);
         $liquidacion = $calculator->liquidar($planilla);
         $liquidacion['frentes'] = collect($liquidacion['frentes'])
             ->sortBy(fn ($grupo) => $grupo['frente']->orden)

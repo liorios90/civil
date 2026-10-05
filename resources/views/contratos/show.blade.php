@@ -52,8 +52,35 @@
                         <button class="secundario" type="submit">Devolver a elaboración</button>
                     </form>
                 @endif
+                @if (auth()->user()->esAdministrador() && $estadoPlanilla === 'aprobada')
+                    <form method="post" action="{{ route('contratos.siguiente', $contrato) }}" onsubmit="return confirm('Se abre la planilla siguiente. El anterior será el total de esta planilla y este período empieza en cero.')">
+                        @csrf
+                        <button type="submit">Abrir planilla {{ str_pad((string) ((int) $planilla->numero + 1), 2, '0', STR_PAD_LEFT) }}</button>
+                    </form>
+                @endif
+                @if (auth()->user()->esAdministrador())
+                    <form method="post" action="{{ route('contratos.planillas.eliminar', [$contrato, $planilla]) }}" onsubmit="return confirm('{{ $contrato->planillas->count() > 1 ? '¿Eliminar la planilla '.$planilla->numero.'? Se borran sus cantidades y sus hojas de medición. Las anteriores quedan igual.' : '¿Eliminar la planilla '.$planilla->numero.'? Se borran sus cantidades y sus hojas. El contrato queda con una planilla 01 vacía.' }}')">
+                        @csrf
+                        @method('delete')
+                        <button class="btn-rojo" type="submit">Eliminar planilla</button>
+                    </form>
+                @endif
             </div>
         </div>
+        @if ($contrato->planillas->count() > 1)
+            <div class="card">
+                <h2>Planillas del contrato</h2>
+                @foreach ($contrato->planillas->sortBy('id') as $periodo)
+                    @php $estadoPeriodo = $periodo->estado ?: 'borrador'; @endphp
+                    <p class="fila">
+                        <span>Planilla {{ $periodo->numero }}</span>
+                        <span class="estado-planilla {{ $estadoPeriodo }}">{{ ['borrador' => 'En elaboración', 'pendiente' => 'Pendiente de aprobación', 'aprobada' => 'Aprobada'][$estadoPeriodo] ?? $estadoPeriodo }}</span>
+                        <a href="{{ route('impresion.planilla', $periodo) }}" target="_blank">Imprimir</a>
+                        <a href="{{ route('impresion.excel', $periodo) }}">Excel</a>
+                    </p>
+                @endforeach
+            </div>
+        @endif
     @endif
     <div class="card">
         <h2>Enlace para el fiscalizador</h2>

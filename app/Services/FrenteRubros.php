@@ -163,26 +163,6 @@ class FrenteRubros
             return;
         }
 
-        $ultimoRubro = [];
-        $anteriores = Frente::query()
-            ->where('contrato_id', $contrato->id)
-            ->where('id', '!=', $nuevo->id)
-            ->where('es_catalogo', false)
-            ->with('rubros')
-            ->orderBy('orden')
-            ->get();
-        foreach ($anteriores as $frente) {
-            foreach ($frente->rubros as $rubro) {
-                $ultimoRubro[$rubro->numero] = $rubro->id;
-            }
-        }
-
-        $ejecuciones = PlanillaRubro::query()
-            ->where('planilla_id', $planilla->id)
-            ->whereIn('rubro_id', array_values($ultimoRubro) ?: [0])
-            ->get()
-            ->keyBy('rubro_id');
-
         foreach ($definiciones as $rubro) {
             $copia = $nuevo->rubros()->create([
                 'numero' => $rubro->numero,
@@ -194,16 +174,55 @@ class FrenteRubros
                 'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
             ]);
 
-            $origen = $ejecuciones->get($ultimoRubro[$rubro->numero] ?? 0);
-            $acumulado = $origen
-                ? round((float) $origen->cantidad_anterior + (float) $origen->cantidad_actual, 2)
-                : 0;
-
             $planilla->ejecuciones()->create([
                 'rubro_id' => $copia->id,
-                'cantidad_anterior' => $acumulado,
+                'cantidad_anterior' => 0,
                 'cantidad_actual' => 0,
             ]);
+        }
+
+        $this->arrastrarTotal($nuevo);
+    }
+
+    public function arrastrarTotal(Frente $nuevo): void
+    {
+        $nuevo->unsetRelation('rubros');
+        $planilla = $nuevo->contrato()->first()?->planillas()->latest('id')->first();
+        $anterior = Frente::query()
+            ->where('contrato_id', $nuevo->contrato_id)
+            ->where('es_catalogo', false)
+            ->where('id', '!=', $nuevo->id)
+            ->where('orden', '<', $nuevo->orden)
+            ->orderByDesc('orden')
+            ->with('rubros')
+            ->first();
+        if (! $planilla || ! $anterior) {
+            return;
+        }
+
+        $porNumero = $anterior->rubros->keyBy('numero');
+        $ejecuciones = PlanillaRubro::query()
+            ->where('planilla_id', $planilla->id)
+            ->whereIn('rubro_id', $anterior->rubros->pluck('id')->merge($nuevo->rubros->pluck('id')))
+            ->get()
+            ->keyBy('rubro_id');
+
+        foreach ($nuevo->rubros as $rubro) {
+            $origenRubro = $porNumero->get($rubro->numero);
+            $origen = $origenRubro ? $ejecuciones->get($origenRubro->id) : null;
+            $valor = round((float) ($origen->cantidad_anterior ?? 0) + (float) ($origen->cantidad_actual ?? 0), 2);
+            $fila = $ejecuciones->get($rubro->id);
+            if (! $fila) {
+                $planilla->ejecuciones()->create([
+                    'rubro_id' => $rubro->id,
+                    'cantidad_anterior' => $valor,
+                    'cantidad_actual' => 0,
+                ]);
+                continue;
+            }
+            if (round((float) $fila->cantidad_anterior, 2) !== $valor) {
+                $fila->update(['cantidad_anterior' => $valor]);
+            }
         }
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Frente;
 use App\Models\Rubro;
+use App\Services\PlanillaCalculator;
 use Illuminate\Http\Request;
 
 class RubroController extends Controller
@@ -138,19 +139,20 @@ class RubroController extends Controller
      */
     private function guardarCantidades(Frente $frente, Rubro $rubro, array $data): void
     {
-        $planilla = $frente->contrato->planillas()->latest()->first();
-        if (! $planilla) {
+        $planilla = $frente->contrato->planillas()->latest('id')->first();
+        if (! $planilla || ($planilla->estado ?: 'borrador') !== 'borrador') {
             return;
         }
 
+        $anterior = app(PlanillaCalculator::class)->anteriorPagado($planilla, $rubro->id);
         $ejecucion = $planilla->ejecuciones()->firstOrCreate(
             ['rubro_id' => $rubro->id],
-            ['cantidad_anterior' => 0, 'cantidad_actual' => 0],
+            ['cantidad_anterior' => $anterior, 'cantidad_actual' => 0],
         );
 
-        $cambios = ['cantidad_anterior' => round((float) ($data['cantidad_anterior'] ?? 0), 2)];
+        $cambios = ['cantidad_anterior' => $anterior];
         $tieneHoja = $ejecucion->anexos()->whereHas('lineas')->exists();
-        if (! $tieneHoja) {
+        if (! $tieneHoja && array_key_exists('cantidad_actual', $data)) {
             $cambios['cantidad_actual'] = round((float) ($data['cantidad_actual'] ?? 0), 2);
         }
 

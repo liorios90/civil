@@ -7,19 +7,26 @@
     @if (session('estado'))
         <div class="alerta">{{ session('estado') }}</div>
     @endif
-    @php $gestiona = auth()->user()->esAdministrador(); @endphp
+    @php
+        $gestiona = auth()->user()->esAdministrador();
+        $esUltima = $gestiona && $frente->contrato->frentes()->orderByDesc('orden')->value('id') === $frente->id;
+    @endphp
     @if ($gestiona)
         <form method="post" action="{{ route('frentes.update', $frente) }}" class="fila card">
             @csrf
             @method('put')
             <input name="nombre" value="{{ $frente->nombre }}" required>
             <button type="submit">Guardar nombre</button>
-            <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar frente</button>
+            @if ($esUltima)
+                <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar frente</button>
+            @endif
         </form>
-        <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar este frente y sus cantidades?')">
-            @csrf
-            @method('delete')
-        </form>
+        @if ($esUltima)
+            <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar esta planilla y sus cantidades?')">
+                @csrf
+                @method('delete')
+            </form>
+        @endif
     @else
         <div class="card"><h1>{{ $frente->nombre }}</h1></div>
     @endif
@@ -32,7 +39,14 @@
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
         $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
+        $periodoAbierto = ! $planilla || ($planilla->estado ?: 'borrador') === 'borrador';
     @endphp
+    @if ($planilla)
+        <p>Planilla {{ $planilla->numero }}. El anterior es el total arrastrado de la planilla anterior y no se escribe a mano.</p>
+        @unless ($periodoAbierto)
+            <p>Esta planilla ya no está en elaboración. Las cantidades de este período quedan fijas hasta abrir la siguiente.</p>
+        @endunless
+    @endif
     <form method="post" action="{{ route('rubros.guardar', $frente) }}">
         @csrf
         @if ($enAplicacion)
@@ -46,7 +60,7 @@
                         $ejecucion = $linea['ejecucion'];
                         $k = $linea['calculo'];
                         $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
-                        $bloqueada = $tieneHoja;
+                        $bloqueada = $tieneHoja || ! $periodoAbierto;
                     @endphp
                     <article class="ficha" data-fila>
                         <div class="ficha-titulo">
@@ -70,7 +84,7 @@
                         <p class="resultado">Total contratado <b class="total-contratado">{{ $m($k['total_contratado']) }}</b></p>
                         <h3>Cantidades ejecutadas</h3>
                         <div class="pares">
-                            <label>Anterior<input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]" value="{{ $q($k['cantidad_anterior']) }}"></label>
+                            <label>Anterior <b class="anterior">{{ $q($k['cantidad_anterior']) }}</b></label>
                             <label>Actual
                                 @if ($bloqueada)
                                     <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
@@ -104,7 +118,7 @@
                         <p class="resultado">Total contratado <b class="total-contratado">0.00</b></p>
                         <h3>Cantidades ejecutadas</h3>
                         <div class="pares">
-                            <label>Anterior<input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]"></label>
+                            <label>Anterior <b class="anterior">0</b></label>
                             <label>Actual<input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></label>
                         </div>
                         <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
@@ -178,7 +192,7 @@
                                 $ejecucion = $linea['ejecucion'];
                                 $k = $linea['calculo'];
                                 $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
-                                $bloqueada = $tieneHoja;
+                                $bloqueada = $tieneHoja || ! $periodoAbierto;
                             @endphp
                             <tr data-fila>
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}"></td>
@@ -193,7 +207,7 @@
                                 <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></td>
                                 <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></td>
                                 <td class="num total-contratado">{{ $m($k['total_contratado']) }}</td>
-                                <td><input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]" value="{{ $q($k['cantidad_anterior']) }}"></td>
+                                <td class="num anterior">{{ $q($k['cantidad_anterior']) }}</td>
                                 <td>
                                     @if ($bloqueada)
                                         <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
@@ -220,7 +234,7 @@
                                 <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]"></td>
                                 <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]"></td>
                                 <td class="num total-contratado">0.00</td>
-                                <td><input class="n anterior" name="filas[{{ $i }}][cantidad_anterior]"></td>
+                                <td class="num anterior">0</td>
                                 <td><input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></td>
                                 <td class="num total-cantidad">0.00</td>
                                 <td class="num valor-anterior">0.00</td>
@@ -265,7 +279,7 @@
                     <p class="resultado">Total contratado <b class="total-contratado">0.00</b></p>
                     <h3>Cantidades ejecutadas</h3>
                     <div class="pares">
-                        <label>Anterior<input class="n anterior" name="filas[__i__][cantidad_anterior]"></label>
+                        <label>Anterior <b class="anterior">0</b></label>
                         <label>Actual<input class="n actual" name="filas[__i__][cantidad_actual]"></label>
                     </div>
                     <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
@@ -284,7 +298,7 @@
                     <td><input class="n contratada" name="filas[__i__][cantidad_contratada]"></td>
                     <td><input class="n unitario" name="filas[__i__][precio_unitario]"></td>
                     <td class="num total-contratado">0.00</td>
-                    <td><input class="n anterior" name="filas[__i__][cantidad_anterior]"></td>
+                    <td class="num anterior">0</td>
                     <td><input class="n actual" name="filas[__i__][cantidad_actual]"></td>
                     <td class="num total-cantidad">0.00</td>
                     <td class="num valor-anterior">0.00</td>
@@ -307,7 +321,8 @@
         const dinero = (valor) => (Math.round((valor + Number.EPSILON) * 100) / 100).toFixed(2);
         const numero = (campo) => {
             if (!campo) return 0;
-            const valor = parseFloat(String(campo.value).replace(',', '.'));
+            const texto = campo instanceof HTMLInputElement ? campo.value : campo.textContent;
+            const valor = parseFloat(String(texto).replace(',', '.'));
             return Number.isFinite(valor) ? valor : 0;
         };
         const suma = (selector) => [...document.querySelectorAll(selector)].reduce((total, celda) => total + (parseFloat(celda.textContent) || 0), 0);

@@ -53,6 +53,8 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::delete('/contratos/{contrato}', [ContratoController::class, 'destroy'])->name('contratos.destroy');
         Route::post('/contratos/{contrato}/aprobar', [ContratoController::class, 'aprobar'])->name('contratos.aprobar');
         Route::post('/contratos/{contrato}/devolver', [ContratoController::class, 'devolver'])->name('contratos.devolver');
+        Route::post('/contratos/{contrato}/siguiente', [ContratoController::class, 'abrirSiguiente'])->name('contratos.siguiente');
+        Route::delete('/contratos/{contrato}/planillas/{planilla}', [ContratoController::class, 'eliminarPlanilla'])->name('contratos.planillas.eliminar');
 
         Route::post('/contratos/{contrato}/frentes', [FrenteController::class, 'store'])->name('frentes.store');
         Route::put('/frentes/{frente}', [FrenteController::class, 'update'])->name('frentes.update');

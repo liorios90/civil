@@ -24,26 +24,34 @@
     @php
         $imagenesOtras = $anexo->imagenes->filter(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
         $imagenesIniciales = $anexo->imagenes->reject(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
+        $periodoAbierto = ($ejecucion->planilla->estado ?: 'borrador') === 'borrador';
     @endphp
+    @unless ($periodoAbierto)
+        <p>La planilla {{ $ejecucion->planilla->numero }} ya no está en elaboración. Esta hoja queda como se aprobó.</p>
+    @endunless
 
     <form method="post" action="{{ route('anexos.imagenes', $ejecucion) }}" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="seccion" value="inicial">
+        <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
         <div class="card">
             <h2>Imágenes</h2>
             <p><label>Cargar imágenes<br><input type="file" name="imagenes[]" accept="image/*" multiple></label></p>
             <button type="submit">Guardar imágenes</button>
         </div>
+        </fieldset>
     </form>
     <div class="galeria">
         @forelse ($imagenesIniciales as $imagen)
             <figure>
                 <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Imagen">
+                @if ($periodoAbierto)
                 <form method="post" action="{{ route('anexos.imagenes.destroy', [$ejecucion, $imagen]) }}">
                     @csrf
                     @method('delete')
                     <button class="danger" type="submit">Quitar</button>
                 </form>
+                @endif
             </figure>
         @empty
             <p>Todavía no hay imágenes en esta sección.</p>
@@ -64,6 +72,7 @@
     </style>
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}" data-tipo="{{ $tipoMedicion }}">
         @csrf
+        <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
         @if ($enAplicacion)
             @php
                 $filasMovil = $anexo->lineas->values();
@@ -195,26 +204,31 @@
         </div>
         @endif
         <div class="barra"><button type="submit">Guardar mediciones</button></div>
+        </fieldset>
     </form>
 
     <form method="post" action="{{ route('anexos.imagenes', $ejecucion) }}" enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="seccion" value="otras">
+        <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
         <div class="card">
             <h2>Otras imágenes</h2>
             <p><label>Cargar imágenes<br><input type="file" name="imagenes[]" accept="image/*" multiple></label></p>
             <button type="submit">Guardar imágenes</button>
         </div>
+        </fieldset>
     </form>
     <div class="galeria">
         @forelse ($imagenesOtras as $imagen)
             <figure>
                 <img src="{{ url('archivos/'.$imagen->ruta) }}" alt="Otra imagen">
+                @if ($periodoAbierto)
                 <form method="post" action="{{ route('anexos.imagenes.destroy', [$ejecucion, $imagen]) }}">
                     @csrf
                     @method('delete')
                     <button class="danger" type="submit">Quitar</button>
                 </form>
+                @endif
             </figure>
         @empty
             <p>Todavía no hay otras imágenes.</p>

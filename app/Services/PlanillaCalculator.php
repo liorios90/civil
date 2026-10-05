@@ -49,6 +49,47 @@ class PlanillaCalculator
     }
 
     /**
+     * En la planilla nueva, el anterior de cada rubro es el total
+     * (anterior + actual) de ese rubro en la planilla anterior.
+     */
+    public function anteriorPagado(Planilla $planilla, int $rubroId): float
+    {
+        $previa = Planilla::query()
+            ->where('contrato_id', $planilla->contrato_id)
+            ->where('id', '<', $planilla->id)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($previa) {
+            $origen = PlanillaRubro::query()
+                ->where('planilla_id', $previa->id)
+                ->where('rubro_id', $rubroId)
+                ->first();
+            if ($origen) {
+                return round((float) $origen->cantidad_anterior + (float) $origen->cantidad_actual, 2);
+            }
+        }
+
+        $saldo = PlanillaRubro::query()
+            ->where('planilla_id', $planilla->id)
+            ->where('rubro_id', $rubroId)
+            ->value('cantidad_anterior');
+
+        return round((float) $saldo, 2);
+    }
+
+    public function fijarAnteriores(Planilla $planilla): void
+    {
+        $planilla->load('ejecuciones');
+        foreach ($planilla->ejecuciones as $ejecucion) {
+            $anterior = $this->anteriorPagado($planilla, $ejecucion->rubro_id);
+            if (round((float) $ejecucion->cantidad_anterior, 2) !== $anterior) {
+                $ejecucion->update(['cantidad_anterior' => $anterior]);
+            }
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function liquidar(Planilla $planilla): array
