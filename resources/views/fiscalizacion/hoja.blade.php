@@ -16,6 +16,7 @@
     <div class="card">
         <h1>{{ $rubro->numero }}. {{ $rubro->descripcion }}</h1>
         <p class="muted">{{ $rubro->frente->nombre }} · Unidad {{ $rubro->unidad }}</p>
+        <p class="muted">{{ \App\Services\UnidadMedicion::explica(\App\Services\UnidadMedicion::tipo($rubro->unidad)) }}</p>
         <div class="cifras">
             <div><small>Anterior</small><b>{{ $q($ejecucion->cantidad_anterior) }}</b></div>
             <div><small>Actual</small><b>{{ $q($ejecucion->cantidad_actual) }}</b></div>
@@ -48,7 +49,7 @@
                         <th>Base 1</th>
                         <th>Base 2</th>
                         <th>Altura</th>
-                        <th>Número</th>
+                        <th>{{ \App\Services\UnidadMedicion::tipo($rubro->unidad) === 'm3km' ? 'Km' : 'Número' }}</th>
                         <th>Longitud</th>
                         <th>Área</th>
                         <th>Volumen</th>

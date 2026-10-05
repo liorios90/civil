@@ -52,14 +52,24 @@
 
     @php
         $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
+        $tipoMedicion = \App\Services\UnidadMedicion::tipo($ejecucion->rubro->unidad);
+        $explicaMedicion = \App\Services\UnidadMedicion::explica($tipoMedicion);
+        $marcaMedicion = fn (string $campo) => \App\Services\UnidadMedicion::marca($tipoMedicion, $campo) ? 'cuenta' : '';
+        $cantidad = fn ($valor) => $valor === null || $valor === '' ? '' : number_format((float) $valor, 2, '.', '');
+        $etiquetaNumero = $tipoMedicion === 'm3km' ? 'Km' : 'Número';
     @endphp
-    <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}">
+    <style>
+        table.hoja input.sub { width: 72px; }
+        input.cuenta { background: #e7f6ec; }
+    </style>
+    <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}" data-tipo="{{ $tipoMedicion }}">
         @csrf
         @if ($enAplicacion)
             @php
                 $filasMovil = $anexo->lineas->values();
             @endphp
             <h2>Mediciones</h2>
+            <p>{{ $explicaMedicion }}</p>
             <div data-lista>
                 @foreach ($filasMovil as $i => $linea)
                     <article class="ficha" data-medicion>
@@ -70,15 +80,16 @@
                             <label>Base 1<input class="n dim b1" name="lineas[{{ $i }}][base1]" value="{{ $linea->base1 !== null ? $linea->base1 + 0 : '' }}"></label>
                             <label>Base 2<input class="n dim b2" name="lineas[{{ $i }}][base2]" value="{{ $linea->base2 !== null ? $linea->base2 + 0 : '' }}"></label>
                             <label>Altura<input class="n dim altura" name="lineas[{{ $i }}][altura]" value="{{ $linea->altura !== null ? $linea->altura + 0 : '' }}"></label>
-                            <label>Número<input class="n dim numero" name="lineas[{{ $i }}][numero]" value="{{ $linea->numero !== null ? $linea->numero + 0 : '' }}"></label>
+                            <label>{{ $etiquetaNumero }}<input class="n dim numero {{ $marcaMedicion('numero') }}" name="lineas[{{ $i }}][numero]" value="{{ $linea->numero !== null ? $linea->numero + 0 : '' }}"></label>
                         </div>
                         <h3>Subtotales</h3>
                         <div class="pares">
-                            <p class="resultado">Longitud <b class="calc longitud">{{ $linea->longitud !== null ? number_format((float) $linea->longitud, 2, '.', '') : '' }}</b></p>
-                            <p class="resultado">Área <b class="calc area">{{ $linea->area !== null ? number_format((float) $linea->area, 2, '.', '') : '' }}</b></p>
-                            <p class="resultado">Volumen <b class="calc volumen">{{ $linea->volumen !== null ? number_format((float) $linea->volumen, 2, '.', '') : '' }}</b></p>
+                            <label>Longitud<input class="n sub longitud {{ $marcaMedicion('longitud') }}" name="lineas[{{ $i }}][longitud]" value="{{ $cantidad($linea->longitud) }}"></label>
+                            <label>Área<input class="n sub area {{ $marcaMedicion('area') }}" name="lineas[{{ $i }}][area]" value="{{ $cantidad($linea->area) }}"></label>
+                            <label>Volumen<input class="n sub volumen {{ $marcaMedicion('volumen') }}" name="lineas[{{ $i }}][volumen]" value="{{ $cantidad($linea->volumen) }}"></label>
                         </div>
-                        <label>Total<input class="n total" name="lineas[{{ $i }}][total]" value="{{ number_format((float) $linea->total, 2, '.', '') }}"></label>
+                        <label>Total<input class="n total {{ $marcaMedicion('total') }}" name="lineas[{{ $i }}][total]" value="{{ number_format((float) $linea->total, 2, '.', '') }}"></label>
+                        <input type="hidden" class="flag-total" name="lineas[{{ $i }}][manual_total]" value="0">
                     </article>
                 @endforeach
                 @php
@@ -92,15 +103,16 @@
                         <label>Base 1<input class="n dim b1" name="lineas[{{ $i }}][base1]"></label>
                         <label>Base 2<input class="n dim b2" name="lineas[{{ $i }}][base2]"></label>
                         <label>Altura<input class="n dim altura" name="lineas[{{ $i }}][altura]"></label>
-                        <label>Número<input class="n dim numero" name="lineas[{{ $i }}][numero]"></label>
+                        <label>{{ $etiquetaNumero }}<input class="n dim numero {{ $marcaMedicion('numero') }}" name="lineas[{{ $i }}][numero]"></label>
                     </div>
                     <h3>Subtotales</h3>
                     <div class="pares">
-                        <p class="resultado">Longitud <b class="calc longitud"></b></p>
-                        <p class="resultado">Área <b class="calc area"></b></p>
-                        <p class="resultado">Volumen <b class="calc volumen"></b></p>
+                        <label>Longitud<input class="n sub longitud {{ $marcaMedicion('longitud') }}" name="lineas[{{ $i }}][longitud]"></label>
+                        <label>Área<input class="n sub area {{ $marcaMedicion('area') }}" name="lineas[{{ $i }}][area]"></label>
+                        <label>Volumen<input class="n sub volumen {{ $marcaMedicion('volumen') }}" name="lineas[{{ $i }}][volumen]"></label>
                     </div>
-                    <label>Total<input class="n total" name="lineas[{{ $i }}][total]"></label>
+                    <label>Total<input class="n total {{ $marcaMedicion('total') }}" name="lineas[{{ $i }}][total]"></label>
+                    <input type="hidden" class="flag-total" name="lineas[{{ $i }}][manual_total]" value="0">
                 </article>
             </div>
             <p><button type="button" class="secundario" id="agregar-medicion">Agregar medición</button></p>
@@ -113,20 +125,22 @@
                         <label>Base 1<input class="n dim b1" name="lineas[__i__][base1]"></label>
                         <label>Base 2<input class="n dim b2" name="lineas[__i__][base2]"></label>
                         <label>Altura<input class="n dim altura" name="lineas[__i__][altura]"></label>
-                        <label>Número<input class="n dim numero" name="lineas[__i__][numero]"></label>
+                        <label>{{ $etiquetaNumero }}<input class="n dim numero {{ $marcaMedicion('numero') }}" name="lineas[__i__][numero]"></label>
                     </div>
                     <h3>Subtotales</h3>
                     <div class="pares">
-                        <p class="resultado">Longitud <b class="calc longitud"></b></p>
-                        <p class="resultado">Área <b class="calc area"></b></p>
-                        <p class="resultado">Volumen <b class="calc volumen"></b></p>
+                        <label>Longitud<input class="n sub longitud {{ $marcaMedicion('longitud') }}" name="lineas[__i__][longitud]"></label>
+                        <label>Área<input class="n sub area {{ $marcaMedicion('area') }}" name="lineas[__i__][area]"></label>
+                        <label>Volumen<input class="n sub volumen {{ $marcaMedicion('volumen') }}" name="lineas[__i__][volumen]"></label>
                     </div>
-                    <label>Total<input class="n total" name="lineas[__i__][total]"></label>
+                    <label>Total<input class="n total {{ $marcaMedicion('total') }}" name="lineas[__i__][total]"></label>
+                    <input type="hidden" class="flag-total" name="lineas[__i__][manual_total]" value="0">
                 </article>
             </template>
         @else
         <div class="card">
             <h2>Mediciones</h2>
+            <p>{{ $explicaMedicion }}</p>
             <div class="scroll">
                 <table class="hoja">
                     <thead>
@@ -140,7 +154,7 @@
                             <th>Base 1</th>
                             <th>Base 2</th>
                             <th>Altura</th>
-                            <th>Número</th>
+                            <th>{{ $etiquetaNumero }}</th>
                             <th>Longitud</th>
                             <th>Área</th>
                             <th>Volumen</th>
@@ -154,11 +168,11 @@
                                 <td><input class="n dim b1" name="lineas[{{ $i }}][base1]" value="{{ $linea->base1 !== null ? $linea->base1 + 0 : '' }}"></td>
                                 <td><input class="n dim b2" name="lineas[{{ $i }}][base2]" value="{{ $linea->base2 !== null ? $linea->base2 + 0 : '' }}"></td>
                                 <td><input class="n dim altura" name="lineas[{{ $i }}][altura]" value="{{ $linea->altura !== null ? $linea->altura + 0 : '' }}"></td>
-                                <td><input class="n dim numero" name="lineas[{{ $i }}][numero]" value="{{ $linea->numero !== null ? $linea->numero + 0 : '' }}"></td>
-                                <td class="calc longitud">{{ $linea->longitud !== null ? number_format((float) $linea->longitud, 2, '.', '') : '' }}</td>
-                                <td class="calc area">{{ $linea->area !== null ? number_format((float) $linea->area, 2, '.', '') : '' }}</td>
-                                <td class="calc volumen">{{ $linea->volumen !== null ? number_format((float) $linea->volumen, 2, '.', '') : '' }}</td>
-                                <td><input class="n total" name="lineas[{{ $i }}][total]" value="{{ number_format((float) $linea->total, 2, '.', '') }}"></td>
+                                <td><input class="n dim numero {{ $marcaMedicion('numero') }}" name="lineas[{{ $i }}][numero]" value="{{ $linea->numero !== null ? $linea->numero + 0 : '' }}"></td>
+                                <td><input class="n sub longitud {{ $marcaMedicion('longitud') }}" name="lineas[{{ $i }}][longitud]" value="{{ $cantidad($linea->longitud) }}"></td>
+                                <td><input class="n sub area {{ $marcaMedicion('area') }}" name="lineas[{{ $i }}][area]" value="{{ $cantidad($linea->area) }}"></td>
+                                <td><input class="n sub volumen {{ $marcaMedicion('volumen') }}" name="lineas[{{ $i }}][volumen]" value="{{ $cantidad($linea->volumen) }}"></td>
+                                <td><input class="n total {{ $marcaMedicion('total') }}" name="lineas[{{ $i }}][total]" value="{{ number_format((float) $linea->total, 2, '.', '') }}"><input type="hidden" class="flag-total" name="lineas[{{ $i }}][manual_total]" value="0"></td>
                             </tr>
                         @endforeach
                         @for ($n = 0; $n < 12; $n++)
@@ -168,11 +182,11 @@
                                 <td><input class="n dim b1" name="lineas[{{ $i }}][base1]"></td>
                                 <td><input class="n dim b2" name="lineas[{{ $i }}][base2]"></td>
                                 <td><input class="n dim altura" name="lineas[{{ $i }}][altura]"></td>
-                                <td><input class="n dim numero" name="lineas[{{ $i }}][numero]"></td>
-                                <td class="calc longitud"></td>
-                                <td class="calc area"></td>
-                                <td class="calc volumen"></td>
-                                <td><input class="n total" name="lineas[{{ $i }}][total]"></td>
+                                <td><input class="n dim numero {{ $marcaMedicion('numero') }}" name="lineas[{{ $i }}][numero]"></td>
+                                <td><input class="n sub longitud {{ $marcaMedicion('longitud') }}" name="lineas[{{ $i }}][longitud]"></td>
+                                <td><input class="n sub area {{ $marcaMedicion('area') }}" name="lineas[{{ $i }}][area]"></td>
+                                <td><input class="n sub volumen {{ $marcaMedicion('volumen') }}" name="lineas[{{ $i }}][volumen]"></td>
+                                <td><input class="n total {{ $marcaMedicion('total') }}" name="lineas[{{ $i }}][total]"><input type="hidden" class="flag-total" name="lineas[{{ $i }}][manual_total]" value="0"></td>
                             </tr>
                         @endfor
                     </tbody>
@@ -208,63 +222,59 @@
     </div>
 
     <script>
-        const valor = (campo) => campo.value === '' ? null : parseFloat(campo.value);
+        const tipoMedicion = document.querySelector('form[data-tipo]')?.dataset.tipo || 'numero';
+        const valor = (campo) => !campo || campo.value === '' ? null : parseFloat(campo.value);
         const texto = (numero) => numero === null ? '' : (Math.round((numero + Number.EPSILON) * 100) / 100).toFixed(2);
-        document.querySelectorAll('table.hoja tbody tr').forEach((fila) => {
-            const b1 = fila.querySelector('.b1');
-            const b2 = fila.querySelector('.b2');
-            const altura = fila.querySelector('.altura');
-            const numero = fila.querySelector('.numero');
-            const total = fila.querySelector('.total');
-            const pintar = () => {
-                const base1 = valor(b1);
-                const base2 = valor(b2);
-                const alto = valor(altura);
-                const veces = valor(numero);
-                const factor = veces === null ? 1 : veces;
-                const longitud = base1 === null ? null : base1 * factor;
-                let area = null;
-                if (base1 !== null && base2 !== null) area = base1 * base2 * factor;
-                else if (base1 !== null && alto !== null) area = base1 * alto * factor;
-                const volumen = (base1 !== null && base2 !== null && alto !== null) ? base1 * base2 * alto * factor : null;
-                fila.querySelector('.longitud').textContent = texto(longitud);
-                fila.querySelector('.area').textContent = texto(area);
-                fila.querySelector('.volumen').textContent = texto(volumen);
-                if (total.dataset.manual === '1') return;
-                const elegido = volumen ?? area ?? longitud ?? veces;
-                total.value = elegido === null ? '' : texto(elegido);
-            };
-            [b1, b2, altura, numero].forEach((campo) => campo.addEventListener('input', pintar));
-            total.addEventListener('input', () => { total.dataset.manual = '1'; });
-        });
         const enlazarMedicion = (fila) => {
             const b1 = fila.querySelector('.b1');
             const b2 = fila.querySelector('.b2');
             const altura = fila.querySelector('.altura');
             const numero = fila.querySelector('.numero');
+            const longitud = fila.querySelector('.longitud');
+            const area = fila.querySelector('.area');
+            const volumen = fila.querySelector('.volumen');
             const total = fila.querySelector('.total');
-            if (!b1 || !total) return;
+            if (!b1 || !total || !longitud || !area || !volumen) return;
+            const poner = (campo, numeroCalculado) => {
+                if (!campo || campo.dataset.manual === '1') return;
+                campo.value = numeroCalculado === null ? '' : texto(numeroCalculado);
+            };
             const pintar = () => {
                 const base1 = valor(b1);
                 const base2 = valor(b2);
                 const alto = valor(altura);
                 const veces = valor(numero);
-                const factor = veces === null ? 1 : veces;
-                const longitud = base1 === null ? null : base1 * factor;
-                let area = null;
-                if (base1 !== null && base2 !== null) area = base1 * base2 * factor;
-                else if (base1 !== null && alto !== null) area = base1 * alto * factor;
-                const volumen = (base1 !== null && base2 !== null && alto !== null) ? base1 * base2 * alto * factor : null;
-                fila.querySelector('.longitud').textContent = texto(longitud);
-                fila.querySelector('.area').textContent = texto(area);
-                fila.querySelector('.volumen').textContent = texto(volumen);
+                const factor = (tipoMedicion === 'm3km' || tipoMedicion === 'kg') ? 1 : (veces === null ? 1 : veces);
+                const lon = base1 === null ? null : base1 * factor;
+                let ar = null;
+                if (base1 !== null && base2 !== null) ar = base1 * base2 * factor;
+                else if (base1 !== null && alto !== null) ar = base1 * alto * factor;
+                const vol = (base1 !== null && base2 !== null && alto !== null) ? base1 * base2 * alto * factor : null;
+                poner(longitud, lon);
+                poner(area, ar);
+                poner(volumen, vol);
                 if (total.dataset.manual === '1') return;
-                const elegido = volumen ?? area ?? longitud ?? veces;
+                const leido = (campo) => valor(campo);
+                let elegido = null;
+                if (tipoMedicion === 'longitud') elegido = leido(longitud);
+                else if (tipoMedicion === 'area') elegido = leido(area);
+                else if (tipoMedicion === 'volumen') elegido = leido(volumen);
+                else if (tipoMedicion === 'm3km') elegido = (leido(volumen) === null || veces === null) ? null : leido(volumen) * veces;
+                else elegido = veces;
                 total.value = elegido === null ? '' : texto(elegido);
             };
             [b1, b2, altura, numero].forEach((campo) => campo.addEventListener('input', pintar));
-            total.addEventListener('input', () => { total.dataset.manual = '1'; });
+            [longitud, area, volumen].forEach((campo) => campo.addEventListener('input', () => {
+                campo.dataset.manual = '1';
+                pintar();
+            }));
+            total.addEventListener('input', () => {
+                total.dataset.manual = '1';
+                const marca = fila.querySelector('.flag-total');
+                if (marca) marca.value = '1';
+            });
         };
+        document.querySelectorAll('table.hoja tbody tr').forEach(enlazarMedicion);
         const listaMediciones = document.querySelector('[data-lista]');
         const botonMedicion = document.getElementById('agregar-medicion');
         if (listaMediciones && botonMedicion) {
@@ -282,7 +292,7 @@
                 fila.querySelector('input')?.focus();
             });
         }
-        const claveMedicion = (campo) => ['b1', 'b2', 'altura', 'numero', 'total'].find((clase) => campo.classList.contains(clase))
+        const claveMedicion = (campo) => ['b1', 'b2', 'altura', 'numero', 'longitud', 'area', 'volumen', 'total'].find((clase) => campo.classList.contains(clase))
             || (campo.name.includes('[descripcion]') ? 'descripcion' : campo.name);
         const camposMedicion = (fila) => [...fila.querySelectorAll('input:not([type="hidden"])')];
         const enfocarMedicion = (campo) => {

@@ -25,6 +25,7 @@
         <tr><td><b>Obra:</b> {{ $rubro->frente->nombre }}</td><td><b>Código:</b> {{ $c->codigo_proceso }}</td></tr>
         <tr><td><b>Contratista:</b> {{ $c->contratista }}</td><td><b>Fiscalizador:</b> {{ $c->fiscalizador }}</td></tr>
         <tr><td colspan="2"><b>Rubro:</b> {{ $rubro->descripcion }} &nbsp; <b>Unidad:</b> {{ $rubro->unidad }}</td></tr>
+        <tr><td colspan="2">{{ \App\Services\UnidadMedicion::explica(\App\Services\UnidadMedicion::tipo($rubro->unidad)) }}</td></tr>
     </table>
 
     @if ($imagenesIniciales->isNotEmpty())
@@ -44,7 +45,7 @@
                     <th rowspan="2">Total</th>
                 </tr>
                 <tr>
-                    <th>Base 1</th><th>Base 2</th><th>Altura</th><th>Número</th>
+                    <th>Base 1</th><th>Base 2</th><th>Altura</th><th>{{ \App\Services\UnidadMedicion::tipo($rubro->unidad) === 'm3km' ? 'Km' : 'Número' }}</th>
                     <th>Longitud</th><th>Área</th><th>Volumen</th>
                 </tr>
             </thead>

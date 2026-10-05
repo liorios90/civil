@@ -6,6 +6,7 @@ use App\Models\AnexoImagen;
 use App\Models\MedicionLinea;
 use App\Models\PlanillaRubro;
 use App\Services\PlanillaCalculator;
+use App\Services\UnidadMedicion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,15 +36,20 @@ class AnexoController extends Controller
             'lineas.*.base2' => ['nullable', 'numeric'],
             'lineas.*.altura' => ['nullable', 'numeric'],
             'lineas.*.numero' => ['nullable', 'numeric'],
+            'lineas.*.longitud' => ['nullable', 'numeric'],
+            'lineas.*.area' => ['nullable', 'numeric'],
+            'lineas.*.volumen' => ['nullable', 'numeric'],
             'lineas.*.total' => ['nullable', 'numeric'],
+            'lineas.*.manual_total' => ['nullable', 'in:0,1'],
         ])['lineas'] ?? [];
 
+        $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
         $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
         $existentes = $anexo->lineas()->get()->values();
         $orden = 1;
 
         foreach ($lineas as $linea) {
-            $calculada = $this->subtotales($linea);
+            $calculada = $this->subtotales($linea, $tipo);
             $descripcion = trim((string) ($linea['descripcion'] ?? ''));
             if ($descripcion === '' && $calculada['total'] == 0.0) {
                 continue;
@@ -80,34 +86,29 @@ class AnexoController extends Controller
      * @param  array<string, mixed>  $linea
      * @return array{longitud: ?float, area: ?float, volumen: ?float, total: float}
      */
-    private function subtotales(array $linea): array
+    private function subtotales(array $linea, string $tipo): array
     {
-        $base1 = $this->numero($linea['base1'] ?? null);
-        $base2 = $this->numero($linea['base2'] ?? null);
-        $altura = $this->numero($linea['altura'] ?? null);
+        $calculada = UnidadMedicion::desdeDimensiones($linea, $tipo);
+        $longitud = $this->numero($linea['longitud'] ?? null) ?? $calculada['longitud'];
+        $area = $this->numero($linea['area'] ?? null) ?? $calculada['area'];
+        $volumen = $this->numero($linea['volumen'] ?? null) ?? $calculada['volumen'];
         $numero = $this->numero($linea['numero'] ?? null);
-        $factor = $numero ?? 1.0;
+        $sugerido = UnidadMedicion::total($tipo, $longitud, $area, $volumen, $numero);
+        $escrito = $this->numero($linea['total'] ?? null);
 
-        $longitud = $base1 === null ? null : round($base1 * $factor, 2);
-        $area = null;
-        if ($base1 !== null && $base2 !== null) {
-            $area = round($base1 * $base2 * $factor, 2);
-        } elseif ($base1 !== null && $altura !== null) {
-            $area = round($base1 * $altura * $factor, 2);
+        if (($linea['manual_total'] ?? '') === '1') {
+            $total = round((float) ($escrito ?? 0), 2);
+        } elseif ($tipo === UnidadMedicion::KILOGRAMO || $tipo === UnidadMedicion::NUMERO) {
+            $total = round((float) ($escrito ?? $sugerido ?? 0), 2);
+        } else {
+            $total = round((float) ($sugerido ?? $escrito ?? 0), 2);
         }
-        $volumen = ($base1 !== null && $base2 !== null && $altura !== null)
-            ? round($base1 * $base2 * $altura * $factor, 2)
-            : null;
-
-        $total = ($linea['total'] ?? '') !== '' && $linea['total'] !== null
-            ? (float) $linea['total']
-            : ($volumen ?? $area ?? $longitud ?? $numero ?? 0.0);
 
         return [
             'longitud' => $longitud,
             'area' => $area,
             'volumen' => $volumen,
-            'total' => round($total, 2),
+            'total' => $total,
         ];
     }
 
