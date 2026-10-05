@@ -56,7 +56,7 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .grid label, .ancho { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
         .ancho { grid-column: 1 / -1; }
-        .tablero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+        .tablero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
         .tablero .card { margin: 0; }
         .tablero small { color: #4a5b6d; }
         .tablero b { display: block; font-size: 22px; margin-top: 4px; }
@@ -72,7 +72,9 @@
         .opciones { display: grid; gap: 8px; }
         .opcion { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid #d5dde5; border-radius: 8px; text-decoration: none; color: inherit; background: #f8fafc; }
         .opcion:hover { border-color: #0f3d68; background: #eef4fb; }
+        .opcion > a { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
         .opcion small { color: #4a5b6d; }
+        .opcion form { margin: 0; }
         .fila input { flex: 1; }
         .acciones { white-space: nowrap; }
         .acciones form { display: inline; }

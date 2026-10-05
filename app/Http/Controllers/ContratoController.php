@@ -71,37 +71,9 @@ class ContratoController extends Controller
         ]);
     }
 
-    public function enviarAprobacion(Contrato $contrato)
-    {
-        $planilla = $this->planillaActual($contrato);
-        abort_unless($planilla->estado === 'borrador', 404);
-        $planilla->update(['estado' => 'pendiente']);
-
-        return redirect()->route('contratos.show', $contrato)->with('estado', 'Planilla enviada a aprobación.');
-    }
-
-    public function aprobar(Contrato $contrato)
-    {
-        $planilla = $this->planillaActual($contrato);
-        abort_unless($planilla->estado === 'pendiente', 404);
-        $planilla->update(['estado' => 'aprobada']);
-
-        return redirect()->route('contratos.show', $contrato)->with('estado', 'Planilla aprobada.');
-    }
-
-    public function devolver(Contrato $contrato)
-    {
-        $planilla = $this->planillaActual($contrato);
-        abort_unless(in_array($planilla->estado, ['pendiente', 'aprobada'], true), 404);
-        $planilla->update(['estado' => 'borrador']);
-
-        return redirect()->route('contratos.show', $contrato)->with('estado', 'La planilla volvió a elaboración.');
-    }
-
     public function abrirSiguiente(Contrato $contrato, PlanillaCalculator $calculator)
     {
         $actual = $this->planillaActual($contrato);
-        abort_unless($actual->estado === 'aprobada', 404);
 
         $numero = str_pad((string) ((int) $actual->numero + 1), 2, '0', STR_PAD_LEFT);
         $nueva = $contrato->planillas()->create([
@@ -239,24 +211,15 @@ class ContratoController extends Controller
 
     /**
      * @param  Collection<int, Contrato>  $contratos
-     * @return array{activas: int, avance: ?float, ejecutado: float, contratado: float, pendientes: array<int, array{contrato: Contrato, planilla: \App\Models\Planilla}>}
+     * @return array{activas: int, avance: ?float, ejecutado: float, contratado: float}
      */
     private function tablero(Collection $contratos, PlanillaCalculator $calculator): array
     {
         $contratado = 0.0;
         $ejecutado = 0.0;
-        $activas = 0;
-        $pendientes = [];
 
         foreach ($contratos as $contrato) {
             $planilla = $contrato->planillas->sortByDesc('id')->first();
-            $estado = $planilla->estado ?? 'borrador';
-            if ($estado !== 'aprobada') {
-                $activas++;
-            }
-            if ($planilla && $estado === 'pendiente') {
-                $pendientes[] = ['contrato' => $contrato, 'planilla' => $planilla];
-            }
             if (! $planilla) {
                 continue;
             }
@@ -266,11 +229,10 @@ class ContratoController extends Controller
         }
 
         return [
-            'activas' => $activas,
+            'activas' => $contratos->count(),
             'avance' => $contratado > 0 ? round($ejecutado / $contratado * 100, 2) : null,
             'ejecutado' => round($ejecutado, 2),
             'contratado' => round($contratado, 2),
-            'pendientes' => $pendientes,
         ];
     }
 

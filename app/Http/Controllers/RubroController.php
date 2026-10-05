@@ -140,7 +140,7 @@ class RubroController extends Controller
     private function guardarCantidades(Frente $frente, Rubro $rubro, array $data): void
     {
         $planilla = $frente->contrato->planillas()->latest('id')->first();
-        if (! $planilla || ($planilla->estado ?: 'borrador') !== 'borrador') {
+        if (! $planilla) {
             return;
         }
 

@@ -9,7 +9,7 @@
     @endif
     @php
         $gestiona = auth()->user()->esAdministrador();
-        $esUltima = $gestiona && $frente->contrato->frentes()->orderByDesc('orden')->value('id') === $frente->id;
+        $esUltima = $gestiona && $frente->contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->value('id') === $frente->id;
     @endphp
     @if ($gestiona)
         <form method="post" action="{{ route('frentes.update', $frente) }}" class="fila card">
@@ -39,14 +39,11 @@
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
         $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
-        $periodoAbierto = ! $planilla || ($planilla->estado ?: 'borrador') === 'borrador';
+        $periodoAbierto = true;
     @endphp
-    @if ($planilla)
+    <!-- @if ($planilla)
         <p>Planilla {{ $planilla->numero }}. El anterior es el total arrastrado de la planilla anterior y no se escribe a mano.</p>
-        @unless ($periodoAbierto)
-            <p>Esta planilla ya no está en elaboración. Las cantidades de este período quedan fijas hasta abrir la siguiente.</p>
-        @endunless
-    @endif
+    @endif -->
     <form method="post" action="{{ route('rubros.guardar', $frente) }}">
         @csrf
         @if ($enAplicacion)

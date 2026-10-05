@@ -34,7 +34,7 @@ class FrenteController extends Controller
         $frente->load('contrato.planillas', 'rubros');
         $planilla = $frente->contrato->planillas->sortByDesc('id')->first();
         $ejecuciones = collect();
-        if ($planilla && ($planilla->estado ?: 'borrador') === 'borrador') {
+        if ($planilla) {
             foreach ($frente->rubros as $rubro) {
                 $planilla->ejecuciones()->firstOrCreate(
                     ['rubro_id' => $rubro->id],
@@ -94,11 +94,9 @@ class FrenteController extends Controller
     public function destroy(Frente $frente)
     {
         $contrato = $frente->contrato;
-        $ultima = $contrato->frentes()->orderByDesc('orden')->first();
+        $ultima = $contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->first();
         if (! $ultima || $ultima->id !== $frente->id) {
-            return redirect()
-                ->route('frentes.show', $frente)
-                ->with('estado', 'Solo se puede eliminar la última planilla.');
+            return back()->with('estado', 'Solo se puede eliminar el último frente.');
         }
 
         $frente->delete();

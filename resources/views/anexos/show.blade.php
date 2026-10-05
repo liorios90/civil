@@ -24,11 +24,8 @@
     @php
         $imagenesOtras = $anexo->imagenes->filter(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
         $imagenesIniciales = $anexo->imagenes->reject(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
-        $periodoAbierto = ($ejecucion->planilla->estado ?: 'borrador') === 'borrador';
+        $periodoAbierto = true;
     @endphp
-    @unless ($periodoAbierto)
-        <p>La planilla {{ $ejecucion->planilla->numero }} ya no está en elaboración. Esta hoja queda como se aprobó.</p>
-    @endunless
 
     <form method="post" action="{{ route('anexos.imagenes', $ejecucion) }}" enctype="multipart/form-data">
         @csrf

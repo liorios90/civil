@@ -51,8 +51,6 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::post('/contratos/{contrato}/rubros-excel', [ContratoController::class, 'importarRubros'])->name('contratos.rubros.excel');
         Route::delete('/contratos/{contrato}/rubros/{rubro}', [ContratoController::class, 'eliminarRubro'])->name('contratos.rubros.eliminar');
         Route::delete('/contratos/{contrato}', [ContratoController::class, 'destroy'])->name('contratos.destroy');
-        Route::post('/contratos/{contrato}/aprobar', [ContratoController::class, 'aprobar'])->name('contratos.aprobar');
-        Route::post('/contratos/{contrato}/devolver', [ContratoController::class, 'devolver'])->name('contratos.devolver');
         Route::post('/contratos/{contrato}/siguiente', [ContratoController::class, 'abrirSiguiente'])->name('contratos.siguiente');
         Route::delete('/contratos/{contrato}/planillas/{planilla}', [ContratoController::class, 'eliminarPlanilla'])->name('contratos.planillas.eliminar');
 
@@ -74,7 +72,6 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
 
         Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
         Route::post('/contratos/{contrato}/enlace', [ContratoController::class, 'enlace'])->name('contratos.enlace');
-        Route::post('/contratos/{contrato}/enviar', [ContratoController::class, 'enviarAprobacion'])->name('contratos.enviar');
         Route::get('/contratos/{contrato}/historial', [HistorialController::class, 'index'])->name('historial.index');
         Route::get('/frentes/{frente}', [FrenteController::class, 'show'])->name('frentes.show');
         Route::post('/frentes/{frente}/hoja', [RubroController::class, 'guardar'])->name('rubros.guardar');
