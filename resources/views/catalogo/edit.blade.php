@@ -5,7 +5,12 @@
 @section('contenido')
     <p><a class="btn secundario" href="{{ route('inicio') }}">Volver a la pantalla principal</a></p>
     <div class="card">
-        <h1>Catálogo general de rubros</h1>
+        <div class="fila catalogo-cabeza">
+            <div>
+                <h1>Catálogo de rubros</h1>
+                <p>Rubros de su empresa. Puede usarlos en un contrato; cambiarlos aquí no modifica los contratos que ya existen.</p>
+            </div>
+        </div>
         @if (session('estado'))
             <div class="alerta">{{ session('estado') }}</div>
         @endif
@@ -16,15 +21,13 @@
                 @endforeach
             </div>
         @endif
-        <p>Estos rubros son de su empresa. En un contrato puede traerlos y quitar los que no use. Cambiar el catálogo no modifica los contratos que ya existen.</p>
-        <p>En Medición puede indicar qué datos se escriben y qué fórmula calcula el total. Si un rubro no tiene medición, al planillar se abre la hoja normal.</p>
         <form method="post" action="{{ route('catalogo.update') }}">
             @csrf
             @method('put')
             <p class="buscar"><input type="search" data-buscar-rubros placeholder="Buscar rubro por número o descripción" autocomplete="off"></p>
             <p data-sin-rubros hidden>Ningún rubro coincide.</p>
             <div class="scroll">
-                <table class="hoja">
+                <table class="hoja catalogo">
                     <thead>
                         <tr>
                             <th>No.</th>
@@ -38,6 +41,7 @@
                     </thead>
                     <tbody>
                         @foreach ($rubros as $i => $rubro)
+                            @php($datosMedicion = $rubro->medicion ?? [])
                             <tr data-fila>
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][numero]" value="{{ $rubro->numero }}"></td>
                                 <td><input name="filas[{{ $i }}][descripcion]" value="{{ $rubro->descripcion }}"></td>
@@ -45,11 +49,18 @@
                                 <td><input class="n cant" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $rubro->cantidad_contratada + 0 }}"></td>
                                 <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]" value="{{ $rubro->precio_unitario + 0 }}"></td>
                                 <td class="calc total"></td>
-                                <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
+                                <td class="ops">
+                                    <button type="button" class="texto" data-medicion>Medición
+                                        @if (count($datosMedicion))
+                                            <span class="cuenta">{{ count($datosMedicion) }}</span>
+                                        @endif
+                                    </button>
+                                    <button class="danger" type="button" data-quitar>Quitar</button>
+                                </td>
                             </tr>
-                            <tr data-config>
+                            <tr data-config class="cerrada">
                                 <td colspan="7">
-                                    @include('catalogo.medicion', ['indice' => $i, 'medicion' => $rubro->medicion ?? []])
+                                    @include('catalogo.medicion', ['indice' => $i, 'medicion' => $datosMedicion])
                                 </td>
                             </tr>
                         @endforeach
@@ -62,9 +73,12 @@
                                 <td><input class="n cant" name="filas[{{ $i }}][cantidad_contratada]"></td>
                                 <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]"></td>
                                 <td class="calc total"></td>
-                                <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
+                                <td class="ops">
+                                    <button type="button" class="texto" data-medicion>Medición</button>
+                                    <button class="danger" type="button" data-quitar>Quitar</button>
+                                </td>
                             </tr>
-                            <tr data-config>
+                            <tr data-config class="cerrada">
                                 <td colspan="7">
                                     @include('catalogo.medicion', ['indice' => $i, 'medicion' => []])
                                 </td>
@@ -73,7 +87,6 @@
                     </tbody>
                 </table>
             </div>
-            <p><button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button></p>
             <template id="fila-nueva">
                 <tr data-fila data-nuevo>
                     <td class="num"></td>
@@ -82,9 +95,12 @@
                     <td><input class="n cant" name="filas[__i__][cantidad_contratada]"></td>
                     <td><input class="n precio" name="filas[__i__][precio_unitario]"></td>
                     <td class="calc total"></td>
-                    <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
+                    <td class="ops">
+                        <button type="button" class="texto" data-medicion>Medición</button>
+                        <button class="danger" type="button" data-quitar>Quitar</button>
+                    </td>
                 </tr>
-                <tr data-config>
+                <tr data-config class="cerrada">
                     <td colspan="7">
                         @include('catalogo.medicion', ['indice' => '__i__', 'medicion' => []])
                     </td>
@@ -97,24 +113,39 @@
                     <button class="danger" type="button" data-quitar-dato>Quitar</button>
                 </div>
             </template>
-            <p class="acciones"><button type="submit">Guardar catálogo</button></p>
+            <div class="barra catalogo-barra">
+                <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
+                <button type="submit">Guardar catálogo</button>
+            </div>
         </form>
     </div>
-    <form method="post" action="{{ route('catalogo.excel') }}" enctype="multipart/form-data" class="card" onsubmit="return confirm('El Excel reemplaza el catálogo general. Los contratos que ya existen no cambian.')">
-        @csrf
-        <h2>Subir el catálogo desde Excel</h2>
-        <p>Columnas: Descripción, Unidad y Precio unitario. También puede incluir Cantidad y Número.</p>
-        <p><input type="file" name="rubros_excel" accept=".xlsx,.xls" required></p>
-        <p><button type="submit">Cargar Excel</button></p>
-    </form>
+    <details class="card catalogo-excel">
+        <summary>Traer rubros desde Excel</summary>
+        <form method="post" action="{{ route('catalogo.excel') }}" enctype="multipart/form-data" onsubmit="return confirm('El Excel reemplaza el catálogo general. Los contratos que ya existen no cambian.')">
+            @csrf
+            <p>Columnas: Descripción, Unidad y Precio unitario. También puede incluir Cantidad y Número.</p>
+            <p><input type="file" name="rubros_excel" accept=".xlsx,.xls" required></p>
+            <p><button type="submit">Cargar Excel</button></p>
+        </form>
+    </details>
     <style>
-        .medicion { margin: 4px 0 12px; padding: 10px 12px; background: #f7fafc; border: 1px solid #d5dde5; border-radius: 8px; }
-        .medicion-titulo { margin: 0 0 4px; font-weight: 700; }
-        .medicion-ayuda { margin: 0 0 8px; color: #4a5b6d; font-size: 13px; }
-        .dato { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; }
-        .dato-fijo { grid-template-columns: 1fr 1fr; }
-        .dato-fijo input { background: #eef3f7; }
-        .medicion-fijo { color: #4a5b6d; font-size: 13px; }
+        .catalogo-cabeza { align-items: flex-end; margin-bottom: 8px; }
+        .catalogo-cabeza p { margin: 0; color: #4a5b6d; }
+        table.catalogo td.ops { padding: 4px 8px; white-space: nowrap; }
+        table.catalogo button.texto { background: transparent; color: #0f3d68; padding: 4px 8px; }
+        table.catalogo button.texto .cuenta { display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #0f3d68; color: #fff; font-size: 11px; line-height: 16px; }
+        tr[data-config].cerrada { display: none; }
+        tr[data-config] > td { background: #f7fafc; }
+        .medicion { margin: 8px; padding: 12px 14px; background: #fff; border: 1px solid #e1e8ef; border-radius: 10px; }
+        .medicion-cabeza { margin: 0 0 10px; }
+        .medicion-cabeza span { display: block; margin-top: 2px; color: #5c6d7e; font-size: 13px; }
+        .medicion-accion { margin: 4px 0 0; }
+        .dato { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.4fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+        table.catalogo .dato input { border: 1px solid #c5d0db; border-radius: 6px; background: #fff; min-width: 0; }
+        .catalogo-barra { display: flex; gap: 8px; }
+        .catalogo-excel summary { cursor: pointer; font-weight: 700; }
+        .catalogo-excel form { margin-top: 12px; }
+        @media (max-width: 700px) { .dato { grid-template-columns: 1fr; } }
     </style>
     <script>
         const tbody = document.querySelector('table.hoja tbody');
@@ -132,10 +163,34 @@
             pintar();
         };
         tbody.querySelectorAll('tr').forEach(enlazar);
+        const actualizarCuenta = (config) => {
+            const boton = config?.previousElementSibling?.querySelector('[data-medicion]');
+            if (!boton) return;
+            const total = config.querySelectorAll('[data-dato]').length;
+            let cuenta = boton.querySelector('.cuenta');
+            if (!total) {
+                cuenta?.remove();
+                return;
+            }
+            if (!cuenta) {
+                cuenta = document.createElement('span');
+                cuenta.className = 'cuenta';
+                boton.append(document.createTextNode(' '), cuenta);
+            }
+            cuenta.textContent = String(total);
+        };
         tbody.addEventListener('click', (evento) => {
+            const ver = evento.target.closest('[data-medicion]');
+            if (ver) {
+                const config = ver.closest('tr')?.nextElementSibling;
+                if (config?.hasAttribute('data-config')) config.classList.toggle('cerrada');
+                return;
+            }
             const quitarDato = evento.target.closest('[data-quitar-dato]');
             if (quitarDato) {
+                const config = quitarDato.closest('tr');
                 quitarDato.closest('[data-dato]')?.remove();
+                actualizarCuenta(config);
                 return;
             }
             const boton = evento.target.closest('[data-quitar]');
@@ -152,13 +207,15 @@
             const nombre = fila?.querySelector('[name$="[descripcion]"]')?.name || '';
             const coincidencia = nombre.match(/filas\[(\d+|__i__)\]/);
             const i = coincidencia ? coincidencia[1] : '0';
-            const lista = boton.parentElement.parentElement.querySelector('[data-datos]');
+            const lista = boton.closest('[data-config-panel]')?.querySelector('[data-datos]');
+            if (!lista) return;
             const j = lista.querySelectorAll('[data-dato]').length;
             const dato = document.getElementById('dato-nuevo').content.cloneNode(true).querySelector('[data-dato]');
             dato.querySelectorAll('[name]').forEach((campo) => {
                 campo.name = campo.name.replace('__i__', i).replace('__j__', String(j));
             });
             lista.appendChild(dato);
+            actualizarCuenta(config);
             dato.querySelector('input')?.focus();
         });
         const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {

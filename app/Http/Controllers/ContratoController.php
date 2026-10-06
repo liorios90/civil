@@ -305,6 +305,9 @@ class ContratoController extends Controller
             'filas.*.cantidad_contratada' => ['nullable', 'numeric'],
             'filas.*.precio_unitario' => ['nullable', 'numeric'],
             'filas.*.tipo_hoja' => ['nullable', 'in:valores,imagenes'],
+            'filas.*.medicion' => ['nullable', 'array', 'max:16'],
+            'filas.*.medicion.*.etiqueta' => ['nullable', 'string', 'max:40'],
+            'filas.*.medicion.*.formula' => ['nullable', 'string', 'max:200'],
         ])['filas'] ?? [];
     }
 
@@ -318,7 +321,7 @@ class ContratoController extends Controller
         return CatalogoRubro::query()
             ->where('empresa_id', $empresaId)
             ->orderBy('numero')
-            ->get(['descripcion', 'unidad', 'cantidad_contratada', 'precio_unitario']);
+            ->get(['descripcion', 'unidad', 'cantidad_contratada', 'precio_unitario', 'medicion']);
     }
 
     private function rubrosEditables(Contrato $contrato): Collection

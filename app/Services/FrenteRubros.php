@@ -59,6 +59,7 @@ class FrenteRubros
                         'unidad' => $rubro->unidad,
                         'cantidad_contratada' => $rubro->cantidad_contratada,
                         'precio_unitario' => $rubro->precio_unitario,
+                        'medicion' => $rubro->medicion,
                         'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
                     ],
                 );
@@ -171,6 +172,7 @@ class FrenteRubros
                 'unidad' => $rubro->unidad,
                 'cantidad_contratada' => $rubro->cantidad_contratada,
                 'precio_unitario' => $rubro->precio_unitario,
+                'medicion' => $rubro->medicion,
                 'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
             ]);
 
@@ -234,6 +236,7 @@ class FrenteRubros
             'unidad' => $rubro->unidad,
             'cantidad_contratada' => $rubro->cantidad_contratada,
             'precio_unitario' => $rubro->precio_unitario,
+            'medicion' => $rubro->medicion,
             'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
         ];
 
@@ -258,6 +261,7 @@ class FrenteRubros
                 'unidad' => $rubro->unidad,
                 'cantidad_contratada' => $rubro->cantidad_contratada,
                 'precio_unitario' => $rubro->precio_unitario,
+                'medicion' => $rubro->medicion,
                 'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
             ]);
 
@@ -297,6 +301,47 @@ class FrenteRubros
             ->get();
     }
 
+    /**
+     * @return array<int, array{etiqueta: string, formula: string}>|null
+     */
+    private function medicionCopiada(mixed $medicion): ?array
+    {
+        if (! is_array($medicion)) {
+            return null;
+        }
+
+        $datos = [];
+        foreach ($medicion as $dato) {
+            if (! is_array($dato)) {
+                continue;
+            }
+            $etiqueta = trim((string) ($dato['etiqueta'] ?? ''));
+            $formula = trim((string) ($dato['formula'] ?? ''));
+            if ($etiqueta === '' && $formula === '') {
+                continue;
+            }
+            if ($formula === '' && str_starts_with($etiqueta, '=')) {
+                $formula = $etiqueta;
+                $etiqueta = 'Total';
+            }
+            if ($etiqueta === '') {
+                $etiqueta = 'Total';
+            }
+            if ($formula !== '' && ! str_starts_with($formula, '=')) {
+                $formula = '='.$formula;
+            }
+            $datos[] = [
+                'etiqueta' => mb_substr($etiqueta, 0, 40),
+                'formula' => mb_substr($formula, 0, 200),
+            ];
+            if (count($datos) >= 16) {
+                break;
+            }
+        }
+
+        return $datos === [] ? null : $datos;
+    }
+
     public function asegurarCatalogo(Contrato $contrato): Frente
     {
         $catalogo = $contrato->catalogo()->first();
@@ -318,12 +363,17 @@ class FrenteRubros
      */
     private function definicion(array $fila, string $descripcion): array
     {
-        return [
+        $datos = [
             'descripcion' => $descripcion,
             'unidad' => ($fila['unidad'] ?? '') !== '' ? $fila['unidad'] : 'u',
             'cantidad_contratada' => round((float) ($fila['cantidad_contratada'] ?? 0), 2),
             'precio_unitario' => round((float) ($fila['precio_unitario'] ?? 0), 2),
             'tipo_hoja' => ($fila['tipo_hoja'] ?? 'valores') === 'imagenes' ? 'imagenes' : 'valores',
         ];
+        if (array_key_exists('medicion', $fila)) {
+            $datos['medicion'] = $this->medicionCopiada($fila['medicion'] ?? null);
+        }
+
+        return $datos;
     }
 }

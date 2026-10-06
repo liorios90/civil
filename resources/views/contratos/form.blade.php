@@ -49,6 +49,7 @@
                             'unidad' => $rubro->unidad,
                             'cantidad_contratada' => $rubro->cantidad_contratada + 0,
                             'precio_unitario' => $rubro->precio_unitario + 0,
+                            'medicion' => $rubro->medicion ?? [],
                         ])->values();
                     }
                 @endphp
@@ -75,6 +76,7 @@
                                 'unidad' => $rubro->unidad,
                                 'cantidad_contratada' => $rubro->cantidad_contratada + 0,
                                 'precio_unitario' => $rubro->precio_unitario + 0,
+                                'medicion' => $rubro->medicion ?? [],
                             ];
                         })->values();
                     @endphp
@@ -103,7 +105,13 @@
                             @foreach ($filasRubro as $i => $rubro)
                                 <tr data-fila>
                                     <td class="num">{{ $rubro['numero'] ?? '' }}@if (! empty($rubro['numero']))<input type="hidden" name="filas[{{ $i }}][numero]" value="{{ $rubro['numero'] }}">@endif</td>
-                                    <td><input name="filas[{{ $i }}][descripcion]" value="{{ $rubro['descripcion'] }}"></td>
+                                    <td>
+                                        <input name="filas[{{ $i }}][descripcion]" value="{{ $rubro['descripcion'] }}">
+                                        @foreach ($rubro['medicion'] ?? [] as $j => $dato)
+                                            <input type="hidden" name="filas[{{ $i }}][medicion][{{ $j }}][etiqueta]" value="{{ $dato['etiqueta'] ?? '' }}">
+                                            <input type="hidden" name="filas[{{ $i }}][medicion][{{ $j }}][formula]" value="{{ $dato['formula'] ?? '' }}">
+                                        @endforeach
+                                    </td>
                                     <td><input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro['unidad'] }}"></td>
                                     <td><input class="n cant" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $rubro['cantidad_contratada'] }}"></td>
                                     <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]" value="{{ $rubro['precio_unitario'] }}"></td>
@@ -228,6 +236,15 @@
                             fila.querySelector('[name$="[unidad]"]').value = rubro.unidad || '';
                             fila.querySelector('[name$="[cantidad_contratada]"]').value = rubro.cantidad_contratada ?? '';
                             fila.querySelector('[name$="[precio_unitario]"]').value = rubro.precio_unitario ?? '';
+                            (rubro.medicion || []).forEach((dato, j) => {
+                                ['etiqueta', 'formula'].forEach((campo) => {
+                                    const input = document.createElement('input');
+                                    input.type = 'hidden';
+                                    input.name = fila.querySelector('[name$="[descripcion]"]').name.replace('[descripcion]', '[medicion][' + j + '][' + campo + ']');
+                                    input.value = dato[campo] || '';
+                                    fila.querySelector('[name$="[descripcion]"]').parentElement.appendChild(input);
+                                });
+                            });
                             fila.querySelector('.cant')?.dispatchEvent(new Event('input'));
                             agregados += 1;
                         });

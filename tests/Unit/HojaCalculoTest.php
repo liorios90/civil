@@ -112,6 +112,23 @@ class HojaCalculoTest extends TestCase
         $this->assertSame('=B3*C3', HojaCalculo::formulaEnFila($desdeFilas[2]['formula'], 3));
     }
 
+    public function test_la_medicion_del_rubro_no_consulta_el_catalogo_general(): void
+    {
+        $rubro = new \App\Models\Rubro([
+            'descripcion' => 'Excavación',
+            'medicion' => [
+                ['etiqueta' => 'altura', 'formula' => ''],
+                ['etiqueta' => 'Total', 'formula' => '=altura*2'],
+            ],
+        ]);
+
+        $columnas = HojaCalculo::plantillaPara($rubro);
+
+        $this->assertSame('descripcion', $columnas[0]['clave']);
+        $this->assertSame('=altura*2', $columnas[2]['formula']);
+        $this->assertSame([], HojaCalculo::plantillaPara(new \App\Models\Rubro(['descripcion' => 'Excavación'])));
+    }
+
     public function test_acepta_suma_promedio_y_referencia_circular(): void
     {
         $columnas = [

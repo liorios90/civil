@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Anexo;
-use App\Models\CatalogoRubro;
 use App\Models\MedicionLinea;
 use App\Models\Rubro;
 
@@ -378,28 +377,11 @@ class HojaCalculo
      */
     public static function plantillaPara(Rubro $rubro): array
     {
-        $empresaId = (int) ($rubro->frente?->contrato?->empresa_id ?? 0);
-        $buscada = self::claveTexto($rubro->descripcion);
-        if ($empresaId < 1 || $buscada === '') {
+        if (! is_array($rubro->medicion) || $rubro->medicion === []) {
             return [];
         }
 
-        $catalogo = CatalogoRubro::query()
-            ->where('empresa_id', $empresaId)
-            ->orderBy('numero')
-            ->get();
-
-        foreach ($catalogo as $item) {
-            if (self::claveTexto($item->descripcion) !== $buscada || ! is_array($item->medicion)) {
-                continue;
-            }
-            $columnas = self::columnasDesdeMedicion($item->medicion);
-            if ($columnas !== []) {
-                return $columnas;
-            }
-        }
-
-        return [];
+        return self::columnasDesdeMedicion($rubro->medicion);
     }
 
     public static function hojaVacia(Anexo $anexo): bool

@@ -87,7 +87,7 @@
         <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
         <div class="card">
             <h2>Mediciones</h2>
-            <p>{{ $explicaMedicion }} @if ($usarPlantilla) Esta hoja usa la medición del catálogo. Escriba la descripción y los datos. Las fórmulas usan los nombres, por ejemplo =altura*peso. @else Escriba un número o una fórmula, por ejemplo =B2*C2 o =SUMA(B2:B8). @endif La fórmula del encabezado se copia en todas las filas. Si una fila necesita otra, cámbiela solo en esa fila. Puede cambiar el nombre de cada columna, agregar columnas o quitarlas, y quitar filas con la × de su número. La descripción siempre está y la columna Total es la cantidad que se factura.</p>
+            <p>{{ $explicaMedicion }} @if ($usarPlantilla) Esta hoja usa la medición guardada en el rubro del contrato. Escriba la descripción y los datos. Las fórmulas usan los nombres, por ejemplo =altura*peso. @else Escriba un número o una fórmula, por ejemplo =B2*C2 o =SUMA(B2:B8). @endif La fórmula del encabezado se copia en todas las filas. Si una fila necesita otra, cámbiela solo en esa fila. Puede cambiar el nombre de cada columna, agregar columnas o quitarlas, y quitar filas con la × de su número. La descripción siempre está y la columna Total es la cantidad que se factura.</p>
             <p class="acciones">
                 <button type="button" class="secundario" data-agregar-columna>Agregar columna</button>
                 <button type="button" class="secundario" data-agregar-fila>Agregar fila</button>

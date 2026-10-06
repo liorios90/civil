@@ -24,7 +24,7 @@ class Rubro extends Model
     }
     protected $fillable = [
         'frente_id', 'numero', 'codigo', 'descripcion', 'unidad',
-        'cantidad_contratada', 'precio_unitario', 'tipo_hoja',
+        'cantidad_contratada', 'precio_unitario', 'medicion', 'tipo_hoja',
     ];
 
     protected function casts(): array
@@ -32,6 +32,7 @@ class Rubro extends Model
         return [
             'cantidad_contratada' => 'decimal:4',
             'precio_unitario' => 'decimal:4',
+            'medicion' => 'array',
         ];
     }
 
