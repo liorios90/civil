@@ -70,19 +70,17 @@
             </form>
         @endif
     </div>
-    @if (auth()->user()->esAdministrador())
-        <div class="card">
-            <h2>Nueva planilla</h2>
-            <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
-                @csrf
-                <input name="nombre" value="{{ old('nombre', 'planilla '.($contrato->frentes->count() + 1)) }}" required>
-                <button type="submit">Crear planilla</button>
-            </form>
-            @error('nombre')
-                <p>{{ $message }}</p>
-            @enderror
-        </div>
-    @endif
+    <div class="card">
+        <h2>Nueva planilla</h2>
+        <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
+            @csrf
+            <input name="nombre" value="{{ old('nombre', 'planilla '.($contrato->frentes->count() + 1)) }}" required>
+            <button type="submit">Crear planilla</button>
+        </form>
+        @error('nombre')
+            <p>{{ $message }}</p>
+        @enderror
+    </div>
     <div class="card">
         <h2>Planillas</h2>
         <p>Cada planilla guarda sus rubros, cantidades y hojas de medición.</p>

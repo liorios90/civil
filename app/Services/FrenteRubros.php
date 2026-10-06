@@ -151,20 +151,35 @@ class FrenteRubros
             return;
         }
 
-        $definiciones = $contrato->catalogo && $contrato->catalogo->rubros->isNotEmpty()
-            ? $contrato->catalogo->rubros
-            : Rubro::query()
+        $anterior = Frente::query()
+            ->where('contrato_id', $contrato->id)
+            ->where('es_catalogo', false)
+            ->where('id', '!=', $nuevo->id)
+            ->where('orden', '<', $nuevo->orden)
+            ->orderByDesc('orden')
+            ->orderByDesc('id')
+            ->with(['rubros.planillaRubros' => fn ($consulta) => $consulta->where('planilla_id', $planilla->id)->with('anexos')])
+            ->first();
+
+        if ($anterior && $anterior->rubros->isNotEmpty()) {
+            $definiciones = $anterior->rubros;
+        } elseif ($contrato->catalogo && $contrato->catalogo->rubros->isNotEmpty()) {
+            $definiciones = $contrato->catalogo->rubros;
+        } else {
+            $definiciones = Rubro::query()
                 ->whereHas('frente', fn ($q) => $q->where('contrato_id', $contrato->id)->where('es_catalogo', false)->where('id', '!=', $nuevo->id))
                 ->orderBy('numero')
                 ->get()
                 ->unique('numero')
                 ->values();
+        }
 
         if ($definiciones->isEmpty()) {
             return;
         }
 
         foreach ($definiciones as $rubro) {
+            $medicion = $this->medicionDesdeRubro($rubro);
             $copia = $nuevo->rubros()->create([
                 'numero' => $rubro->numero,
                 'codigo' => $rubro->codigo,
@@ -172,18 +187,84 @@ class FrenteRubros
                 'unidad' => $rubro->unidad,
                 'cantidad_contratada' => $rubro->cantidad_contratada,
                 'precio_unitario' => $rubro->precio_unitario,
-                'medicion' => $rubro->medicion,
+                'medicion' => $medicion,
                 'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
             ]);
 
-            $planilla->ejecuciones()->create([
+            $ejecucion = $planilla->ejecuciones()->create([
                 'rubro_id' => $copia->id,
                 'cantidad_anterior' => 0,
                 'cantidad_actual' => 0,
             ]);
+
+            $this->copiarEstructuraMedicion($rubro, $ejecucion, $medicion);
         }
 
         $this->arrastrarTotal($nuevo);
+    }
+
+    /**
+     * @return array<int, array{etiqueta: string, formula: string}>|null
+     */
+    private function medicionDesdeRubro(Rubro $rubro): ?array
+    {
+        $anexo = $rubro->planillaRubros->first()?->anexos->sortBy('hoja')->first();
+        if ($anexo && is_array($anexo->columnas) && $anexo->columnas !== []) {
+            $datos = [];
+            foreach ($anexo->columnas as $columna) {
+                if (! is_array($columna) || ($columna['clave'] ?? '') === 'descripcion') {
+                    continue;
+                }
+                $etiqueta = trim((string) ($columna['etiqueta'] ?? ''));
+                if ($etiqueta === '') {
+                    continue;
+                }
+                $formula = trim((string) ($columna['formula'] ?? ''));
+                if ($formula !== '' && ! str_starts_with($formula, '=')) {
+                    $formula = '='.$formula;
+                }
+                $datos[] = [
+                    'etiqueta' => mb_substr($etiqueta, 0, 40),
+                    'formula' => mb_substr($formula, 0, 200),
+                ];
+            }
+            if ($datos !== []) {
+                return $datos;
+            }
+        }
+
+        return $this->medicionCopiada($rubro->medicion);
+    }
+
+    /**
+     * @param  array<int, array{etiqueta: string, formula: string}>|null  $medicion
+     */
+    private function copiarEstructuraMedicion(Rubro $origen, PlanillaRubro $ejecucion, ?array $medicion): void
+    {
+        $anexoOrigen = $origen->planillaRubros->first()?->anexos->sortBy('hoja')->first();
+        $columnas = null;
+        $tipo = 'geometrico';
+
+        if ($anexoOrigen) {
+            $tipo = $anexoOrigen->tipo ?: 'geometrico';
+            if (is_array($anexoOrigen->columnas) && $anexoOrigen->columnas !== []) {
+                $columnas = $anexoOrigen->columnas;
+            }
+        }
+
+        if ($columnas === null && $medicion !== null) {
+            $columnas = HojaCalculo::columnasDesdeMedicion($medicion);
+        }
+
+        if ($columnas === null || $columnas === []) {
+            return;
+        }
+
+        $ejecucion->anexos()->create([
+            'tipo' => $tipo,
+            'hoja' => 1,
+            'columnas' => $columnas,
+        ]);
     }
 
     public function arrastrarTotal(Frente $nuevo): void

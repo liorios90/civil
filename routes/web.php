@@ -58,7 +58,6 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::post('/contratos/{contrato}/siguiente', [ContratoController::class, 'abrirSiguiente'])->name('contratos.siguiente');
         Route::delete('/contratos/{contrato}/planillas/{planilla}', [ContratoController::class, 'eliminarPlanilla'])->name('contratos.planillas.eliminar');
 
-        Route::post('/contratos/{contrato}/frentes', [FrenteController::class, 'store'])->name('frentes.store');
         Route::put('/frentes/{frente}', [FrenteController::class, 'update'])->name('frentes.update');
         Route::delete('/frentes/{frente}', [FrenteController::class, 'destroy'])->name('frentes.destroy');
 
@@ -77,6 +76,7 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::get('/contratos/{contrato}', [ContratoController::class, 'show'])->name('contratos.show');
         Route::post('/contratos/{contrato}/enlace', [ContratoController::class, 'enlace'])->name('contratos.enlace');
         Route::get('/contratos/{contrato}/historial', [HistorialController::class, 'index'])->name('historial.index');
+        Route::post('/contratos/{contrato}/frentes', [FrenteController::class, 'store'])->name('frentes.store');
         Route::get('/frentes/{frente}', [FrenteController::class, 'show'])->name('frentes.show');
         Route::post('/frentes/{frente}/hoja', [RubroController::class, 'guardar'])->name('rubros.guardar');
 
