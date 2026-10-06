@@ -61,7 +61,7 @@
                         'enlace' => route('historial.index', [$contrato, 'frente' => $catalogoRubros->id]),
                     ])
                 @endif
-                <p>Estos rubros son solo de este contrato. Se copian al crear una planilla. Eliminar quita el rubro de este contrato; las planillas que ya existen no cambian.</p>
+                <p>Estos rubros son solo de este contrato. En las planillas solo aparecen los que tienen cantidad. Eliminar quita el rubro de este contrato; las planillas que ya existen no cambian.</p>
                 <p>
                     @if ($catalogoGeneral->isNotEmpty())
                         <button type="button" class="secundario" id="usar-catalogo">Usar catálogo general ({{ $catalogoGeneral->count() }})</button>

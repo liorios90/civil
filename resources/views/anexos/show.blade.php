@@ -24,8 +24,11 @@
     @php
         $imagenesOtras = $anexo->imagenes->filter(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
         $imagenesIniciales = $anexo->imagenes->reject(fn ($imagen) => str_starts_with($imagen->ruta, 'anexos/otras/'));
-        $periodoAbierto = true;
+        $periodoAbierto = $periodoAbierto ?? false;
     @endphp
+    @unless ($periodoAbierto)
+        <div class="alerta">Esta planilla ya no se puede modificar. Solo se puede visualizar.</div>
+    @endunless
 
     <form method="post" action="{{ route('anexos.imagenes', $ejecucion) }}" enctype="multipart/form-data">
         @csrf
@@ -69,18 +72,25 @@
         $totalFilas = max($filasMedicion->count() + 8, 12);
     @endphp
     <style>
-        table.hoja th { color: #fff; vertical-align: bottom; }
-        table.hoja th .letra { display: block; font-size: 10px; font-weight: 400; opacity: .75; }
-        table.hoja th input.etiqueta { min-width: 72px; width: 88px; background: transparent; color: #fff; border: 0; border-bottom: 1px solid rgba(255,255,255,.45); border-radius: 0; text-align: center; padding: 2px 4px; font-weight: 700; }
-        table.hoja th input.formula-col { display: block; width: 100%; min-width: 72px; margin-top: 4px; background: rgba(255,255,255,.14); color: #fff; border: 0; border-radius: 4px; font-size: 11px; font-weight: 400; text-align: center; padding: 2px 4px; }
-        table.hoja th input.formula-col::placeholder { color: rgba(255,255,255,.75); }
-        table.hoja th button.quitar-col { background: transparent; color: #fff; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
-        table.hoja th.esquina, table.hoja td.fila-marca { position: sticky; left: 0; width: 52px; min-width: 52px; text-align: center; vertical-align: middle; }
-        table.hoja th.esquina { z-index: 2; background: #1f4e79; }
-        table.hoja td.fila-marca { z-index: 1; background: #e7eef5; color: #1f4e79; padding: 4px 2px; }
-        table.hoja td.fila-marca .num-fila { display: block; font-weight: 700; font-size: 12px; }
-        table.hoja td.fila-marca button.quitar-fila { background: transparent; color: #9b1c1c; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
-        table.hoja input.celda.malo { color: #9b1c1c; background: #fdecec; }
+        table.hoja[data-hoja] { width: max-content; min-width: 100%; table-layout: fixed; }
+        table.hoja[data-hoja] th { color: #fff; vertical-align: bottom; min-width: 88px; max-width: 160px; }
+        table.hoja[data-hoja] th[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
+        table.hoja[data-hoja] td { min-width: 88px; max-width: 160px; }
+        table.hoja[data-hoja] td[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
+        table.hoja[data-hoja] th .letra { display: block; font-size: 10px; font-weight: 400; opacity: .75; }
+        table.hoja[data-hoja] th input.etiqueta { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; background: transparent; color: #fff; border: 0; border-bottom: 1px solid rgba(255,255,255,.45); border-radius: 0; text-align: center; padding: 2px 4px; font-weight: 700; }
+        table.hoja[data-hoja] th input.formula-col { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; margin-top: 4px; background: rgba(255,255,255,.14); color: #fff; border: 0; border-radius: 4px; font-size: 11px; font-weight: 400; text-align: center; padding: 2px 4px; }
+        table.hoja[data-hoja] th input.formula-col::placeholder { color: rgba(255,255,255,.75); }
+        table.hoja[data-hoja] th button.quitar-col { background: transparent; color: #fff; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
+        table.hoja[data-hoja] th.esquina, table.hoja[data-hoja] td.fila-marca { position: sticky; left: 0; width: 52px; min-width: 52px; max-width: 52px; text-align: center; vertical-align: middle; }
+        table.hoja[data-hoja] th.esquina { z-index: 2; background: #1f4e79; }
+        table.hoja[data-hoja] td.fila-marca { z-index: 1; background: #e7eef5; color: #1f4e79; padding: 4px 2px; }
+        table.hoja[data-hoja] td.fila-marca .num-fila { display: block; font-weight: 700; font-size: 12px; }
+        table.hoja[data-hoja] td.fila-marca button.quitar-fila { background: transparent; color: #9b1c1c; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
+        table.hoja[data-hoja] td input.celda,
+        table.hoja[data-hoja] td input.n,
+        table.hoja[data-hoja] td input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 6px 4px; }
+        table.hoja[data-hoja] input.celda.malo { color: #9b1c1c; background: #fdecec; }
     </style>
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}" data-tipo="{{ $tipoMedicion }}">
         @csrf

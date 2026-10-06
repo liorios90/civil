@@ -83,7 +83,7 @@
     </div>
     <div class="card">
         <h2>Planillas</h2>
-        <p>Cada planilla guarda sus rubros, cantidades y hojas de medición.</p>
+        <p>Cada planilla guarda sus rubros, cantidades y hojas de medición. Solo la última se puede modificar; las anteriores quedan solo para consulta.</p>
         <div class="opciones">
             @php($ultimoFrente = auth()->user()->esAdministrador() ? $contrato->frentes->sortBy([['orden', 'desc'], ['id', 'desc']])->first() : null)
             @forelse ($contrato->frentes as $frente)

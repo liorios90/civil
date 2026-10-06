@@ -33,8 +33,9 @@ class FrenteController extends Controller
     {
         $frente->load('contrato.planillas', 'rubros');
         $planilla = $frente->contrato->planillas->sortByDesc('id')->first();
+        $editable = $frente->esUltimaPlanilla();
         $ejecuciones = collect();
-        if ($planilla) {
+        if ($planilla && $editable) {
             foreach ($frente->rubros as $rubro) {
                 $planilla->ejecuciones()->firstOrCreate(
                     ['rubro_id' => $rubro->id],
@@ -80,11 +81,13 @@ class FrenteController extends Controller
             'ejecuciones' => $ejecuciones,
             'lineas' => $lineas,
             'totales' => $totales,
+            'editable' => $editable,
         ]);
     }
 
     public function update(Request $request, Frente $frente)
     {
+        $frente->asegurarEditable();
         $data = $request->validate(['nombre' => ['required', 'string', 'max:500']]);
         $frente->update($data);
 

@@ -47,10 +47,13 @@ class FrenteRubros
 
         $catalogo->load('rubros');
         $planilla = $contrato->planillas()->latest('id')->first();
-        $numerosCatalogo = $catalogo->rubros->pluck('numero')->all();
+        $paraPlanillas = $catalogo->rubros
+            ->filter(fn (Rubro $rubro) => (float) $rubro->cantidad_contratada > 0)
+            ->values();
+        $numerosPlanilla = $paraPlanillas->pluck('numero')->all();
 
         foreach ($contrato->frentes as $frente) {
-            foreach ($catalogo->rubros as $rubro) {
+            foreach ($paraPlanillas as $rubro) {
                 $copia = $frente->rubros()->updateOrCreate(
                     ['numero' => $rubro->numero],
                     [
@@ -72,9 +75,9 @@ class FrenteRubros
                 }
             }
 
-            $sobrantes = $numerosCatalogo === []
+            $sobrantes = $numerosPlanilla === []
                 ? $frente->rubros()
-                : $frente->rubros()->whereNotIn('numero', $numerosCatalogo);
+                : $frente->rubros()->whereNotIn('numero', $numerosPlanilla);
             $sobrantes->get()->each->delete();
         }
     }
@@ -164,7 +167,9 @@ class FrenteRubros
         if ($anterior && $anterior->rubros->isNotEmpty()) {
             $definiciones = $anterior->rubros;
         } elseif ($contrato->catalogo && $contrato->catalogo->rubros->isNotEmpty()) {
-            $definiciones = $contrato->catalogo->rubros;
+            $definiciones = $contrato->catalogo->rubros
+                ->filter(fn (Rubro $rubro) => (float) $rubro->cantidad_contratada > 0)
+                ->values();
         } else {
             $definiciones = Rubro::query()
                 ->whereHas('frente', fn ($q) => $q->where('contrato_id', $contrato->id)->where('es_catalogo', false)->where('id', '!=', $nuevo->id))
@@ -328,37 +333,18 @@ class FrenteRubros
 
     public function reflejarNuevo(Rubro $rubro): void
     {
-        $contrato = $rubro->frente->contrato;
-        $planilla = $contrato->planillas()->latest('id')->first();
-        $datos = [
-            'codigo' => $rubro->codigo,
-            'descripcion' => $rubro->descripcion,
-            'unidad' => $rubro->unidad,
-            'cantidad_contratada' => $rubro->cantidad_contratada,
-            'precio_unitario' => $rubro->precio_unitario,
-            'medicion' => $rubro->medicion,
-            'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
-        ];
-
-        $this->asegurarCatalogo($contrato)->rubros()->updateOrCreate(
+        $this->asegurarCatalogo($rubro->frente->contrato)->rubros()->updateOrCreate(
             ['numero' => $rubro->numero],
-            $datos,
+            [
+                'codigo' => $rubro->codigo,
+                'descripcion' => $rubro->descripcion,
+                'unidad' => $rubro->unidad,
+                'cantidad_contratada' => $rubro->cantidad_contratada,
+                'precio_unitario' => $rubro->precio_unitario,
+                'medicion' => $rubro->medicion,
+                'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
+            ],
         );
-
-        foreach ($this->otrosFrentes($rubro->frente) as $frente) {
-            if ($frente->rubros()->where('numero', $rubro->numero)->exists()) {
-                continue;
-            }
-
-            $copia = $frente->rubros()->create($datos + ['numero' => $rubro->numero]);
-
-            if ($planilla) {
-                $planilla->ejecuciones()->firstOrCreate(
-                    ['rubro_id' => $copia->id],
-                    ['cantidad_anterior' => 0, 'cantidad_actual' => 0],
-                );
-            }
-        }
     }
 
     public function reflejarEliminacion(Frente $frente, int $numero): void

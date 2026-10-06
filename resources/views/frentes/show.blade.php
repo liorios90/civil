@@ -9,25 +9,25 @@
     @endif
     @php
         $gestiona = auth()->user()->esAdministrador();
-        $puedeAgregar = $gestiona || auth()->user()->esUsuario();
-        $esUltima = $gestiona && $frente->contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->value('id') === $frente->id;
+        $editable = $editable ?? $frente->esUltimaPlanilla();
+        $puedeAgregar = $editable && ($gestiona || auth()->user()->esUsuario());
+        $esUltima = $editable;
     @endphp
-    @if ($gestiona)
+    @unless ($editable)
+        <div class="alerta">Esta planilla ya no se puede modificar. Solo se puede visualizar.</div>
+    @endunless
+    @if ($gestiona && $editable)
         <form method="post" action="{{ route('frentes.update', $frente) }}" class="fila card">
             @csrf
             @method('put')
             <input name="nombre" value="{{ $frente->nombre }}" required>
             <button type="submit">Guardar nombre</button>
-            @if ($esUltima)
-                <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar planilla</button>
-            @endif
+            <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar planilla</button>
         </form>
-        @if ($esUltima)
-            <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar esta planilla y sus cantidades?')">
-                @csrf
-                @method('delete')
-            </form>
-        @endif
+        <form id="eliminar-frente" method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar esta planilla y sus cantidades?')">
+            @csrf
+            @method('delete')
+        </form>
     @else
         <div class="card"><h1>{{ $frente->nombre }}</h1></div>
     @endif
@@ -46,6 +46,7 @@
     @endif -->
     <form method="post" action="{{ route('rubros.guardar', $frente) }}">
         @csrf
+        <fieldset @disabled(! $editable) style="border:0;margin:0;padding:0">
         @if ($enAplicacion)
             <h2>{{ $frente->nombre }}</h2>
             <p class="buscar"><input type="search" data-buscar-rubros placeholder="Buscar rubro por número o descripción" autocomplete="off"></p>
@@ -67,10 +68,16 @@
                             @endif
                             <input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}">
                         </div>
-                        @if ($gestiona)
+                        @if ($gestiona && $editable)
                             <p><button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button></p>
                         @endif
-                        <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></label>
+                        <label>Unidad
+                            @if ($editable)
+                                <input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}">
+                            @else
+                                <b>{{ $rubro->unidad }}</b>
+                            @endif
+                        </label>
                         <h3>Contratado</h3>
                         <div class="pares">
                             <label>Cantidad <b class="contratada">{{ $q($k['cantidad_contratada']) }}</b></label>
@@ -190,7 +197,13 @@
                                         {{ $rubro->descripcion }}
                                     @endif
                                 </td>
-                                <td><input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></td>
+                                <td>
+                                    @if ($editable)
+                                        <input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}">
+                                    @else
+                                        {{ $rubro->unidad }}
+                                    @endif
+                                </td>
                                 <td class="num contratada">{{ $q($k['cantidad_contratada']) }}</td>
                                 <td class="num unitario">{{ $q($k['precio_unitario']) }}</td>
                                 <td class="num total-contratado">{{ $m($k['total_contratado']) }}</td>
@@ -200,7 +213,7 @@
                                 <td class="num valor-anterior">{{ $m($k['valor_anterior']) }}</td>
                                 <td class="num valor-actual">{{ $m($k['valor_actual']) }}</td>
                                 <td class="num valor-total">{{ $m($k['valor_total']) }}</td>
-                                <td>@if ($gestiona)<button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button>@endif</td>
+                                <td>@if ($gestiona && $editable)<button class="danger" type="submit" form="quitar-rubro-{{ $rubro->id }}">Quitar</button>@endif</td>
                             </tr>
                         @empty
                             <tr class="vacia"><td colspan="13">Esta planilla no tiene rubros. Agrega uno abajo.</td></tr>
@@ -241,12 +254,15 @@
             </div>
         </div>
         @endif
+        @if ($editable)
         <div class="barra">
             @if ($puedeAgregar)
                 <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
             @endif
             <button type="submit">Guardar</button>
         </div>
+        @endif
+        </fieldset>
         <template id="fila-nueva">
             @if ($enAplicacion)
                 <article class="ficha" data-fila data-nuevo>
@@ -290,7 +306,7 @@
             @endif
         </template>
     </form>
-    @if ($gestiona)
+    @if ($gestiona && $editable)
     @foreach ($lineas as $linea)
         <form id="quitar-rubro-{{ $linea['rubro']->id }}" method="post" action="{{ route('rubros.destroy', $linea['rubro']) }}" onsubmit="return confirm('¿Quitar este rubro de la planilla?')">
             @csrf

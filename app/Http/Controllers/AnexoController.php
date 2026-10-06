@@ -13,23 +13,39 @@ use Illuminate\Support\Facades\Storage;
 
 class AnexoController extends Controller
 {
+    private function asegurarEditable(PlanillaRubro $ejecucion): void
+    {
+        $ejecucion->loadMissing('rubro.frente');
+        $ejecucion->rubro->frente->asegurarEditable();
+    }
+
     public function show(PlanillaRubro $ejecucion)
     {
         $ejecucion->load(['planilla.contrato', 'rubro.frente', 'anexos.lineas', 'anexos.imagenes']);
-        $anexo = $ejecucion->anexos()->firstOrCreate(
-            ['hoja' => 1],
-            ['tipo' => 'geometrico'],
-        );
-        $anexo->load(['lineas', 'imagenes']);
+        $frente = $ejecucion->rubro->frente;
+        $editable = $frente->esUltimaPlanilla();
+        if ($editable) {
+            $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
+            $anexo->load(['lineas', 'imagenes']);
+        } else {
+            $anexo = $ejecucion->anexos()->where('hoja', 1)->with(['lineas', 'imagenes'])->first()
+                ?? $ejecucion->anexos()->make(['hoja' => 1, 'tipo' => 'geometrico']);
+            if (! $anexo->exists) {
+                $anexo->setRelation('lineas', collect());
+                $anexo->setRelation('imagenes', collect());
+            }
+        }
 
         return view('anexos.show', [
             'ejecucion' => $ejecucion,
             'anexo' => $anexo,
+            'periodoAbierto' => $editable,
         ]);
     }
 
     public function guardar(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
+        $this->asegurarEditable($ejecucion);
         $data = $request->validate([
             'orden_columnas' => ['nullable', 'array', 'max:24'],
             'orden_columnas.*' => ['required', 'string', 'max:31'],
@@ -137,6 +153,7 @@ class AnexoController extends Controller
 
     public function imagenes(Request $request, PlanillaRubro $ejecucion)
     {
+        $this->asegurarEditable($ejecucion);
         $data = $request->validate([
             'seccion' => ['required', 'in:inicial,otras'],
             'imagenes' => ['nullable', 'array'],
@@ -172,6 +189,7 @@ class AnexoController extends Controller
 
     public function destroyImagen(PlanillaRubro $ejecucion, AnexoImagen $imagen)
     {
+        $this->asegurarEditable($ejecucion);
         abort_unless($imagen->anexo->planilla_rubro_id === $ejecucion->id, 404);
         Storage::disk('public')->delete($imagen->ruta);
         $imagen->delete();
@@ -202,6 +220,7 @@ class AnexoController extends Controller
 
     public function store(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
+        $this->asegurarEditable($ejecucion);
         $data = $request->validate([
             'descripcion' => ['nullable', 'string', 'max:255'],
             'base1' => ['nullable', 'numeric'],
@@ -228,6 +247,7 @@ class AnexoController extends Controller
 
     public function destroy(PlanillaRubro $ejecucion, MedicionLinea $linea, PlanillaCalculator $calculator)
     {
+        $this->asegurarEditable($ejecucion);
         abort_unless($linea->anexo->planilla_rubro_id === $ejecucion->id, 404);
         $linea->delete();
         $calculator->sincronizarCantidadActual($ejecucion);

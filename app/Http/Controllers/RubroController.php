@@ -12,6 +12,7 @@ class RubroController extends Controller
 {
     public function guardar(Request $request, Frente $frente)
     {
+        $frente->asegurarEditable();
         $filas = $request->validate([
             'filas' => ['nullable', 'array'],
             'filas.*.id' => ['nullable', 'integer'],
@@ -73,6 +74,7 @@ class RubroController extends Controller
 
     public function store(Request $request, Frente $frente)
     {
+        $frente->asegurarEditable();
         $data = $this->datos($request);
         $catalogo = app(FrenteRubros::class);
         $rubro = $frente->rubros()->create([
@@ -91,6 +93,7 @@ class RubroController extends Controller
 
     public function update(Request $request, Rubro $rubro)
     {
+        $rubro->frente->asegurarEditable();
         $data = $this->datos($request);
         $rubro->update([
             'descripcion' => $data['descripcion'],
@@ -106,6 +109,7 @@ class RubroController extends Controller
     public function destroy(Rubro $rubro)
     {
         $frente = $rubro->frente;
+        $frente->asegurarEditable();
         $rubro->delete();
 
         return redirect()->route('frentes.show', $frente);

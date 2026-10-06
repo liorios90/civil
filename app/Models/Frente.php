@@ -45,4 +45,22 @@ class Frente extends Model
     {
         return $this->hasMany(Rubro::class)->orderBy('numero');
     }
+
+    public function esUltimaPlanilla(): bool
+    {
+        if ($this->es_catalogo) {
+            return false;
+        }
+
+        $ultimaId = $this->contrato
+            ? $this->contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->value('id')
+            : null;
+
+        return $ultimaId !== null && (int) $ultimaId === (int) $this->id;
+    }
+
+    public function asegurarEditable(): void
+    {
+        abort_unless($this->esUltimaPlanilla(), 403, 'Esta planilla ya no se puede modificar. Solo se puede visualizar.');
+    }
 }
