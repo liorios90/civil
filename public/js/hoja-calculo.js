@@ -341,10 +341,11 @@
         return val;
     };
 
-    const columnasDe = (tabla) => [...tabla.querySelectorAll('thead th')].map((th) => th.dataset.clave);
+    const columnasDe = (tabla) => [...tabla.querySelectorAll('thead th')].map((th) => th.dataset.clave).filter(Boolean);
     const crudasDe = (tabla) => [...tabla.tBodies[0].rows].map((tr) => {
         const fila = {};
         tr.querySelectorAll('td').forEach((td) => {
+            if (!td.dataset.clave) return;
             fila[td.dataset.clave] = td.querySelector('.celda')?.dataset.raw || '';
         });
         return fila;
@@ -383,9 +384,52 @@
     };
 
     const letras = (tabla) => {
-        [...tabla.querySelectorAll('thead th')].forEach((th, indice) => {
+        let indice = 0;
+        [...tabla.querySelectorAll('thead th')].forEach((th) => {
             const marca = th.querySelector('.letra');
-            if (marca) marca.textContent = letra(indice);
+            if (!marca) return;
+            marca.textContent = letra(indice);
+            indice += 1;
+        });
+    };
+
+    const numerar = (tabla) => {
+        [...tabla.tBodies[0].rows].forEach((tr, indice) => {
+            const marca = tr.querySelector('.num-fila');
+            if (marca) marca.textContent = String(indice + 1);
+        });
+    };
+
+    const crearMarcaFila = (numero) => {
+        const td = document.createElement('td');
+        td.className = 'fila-marca';
+        const num = document.createElement('span');
+        num.className = 'num-fila';
+        num.textContent = String(numero);
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'quitar-fila';
+        quitar.title = 'Quitar fila';
+        quitar.textContent = '×';
+        td.append(num, quitar);
+        return td;
+    };
+
+    const ajustarFormulasAlBorrar = (tabla, filaBorrada) => {
+        tabla.querySelectorAll('.celda').forEach((celda) => {
+            const raw = celda.dataset.raw || '';
+            if (!raw.startsWith('=')) return;
+            const ajustada = raw.replace(/([A-Za-z]+)(\d+)/g, (todo, letras, numero) => {
+                const fila = Number(numero);
+                if (fila === filaBorrada) return letras + '#';
+                if (fila > filaBorrada) return letras + String(fila - 1);
+                return todo;
+            });
+            if (ajustada === raw) return;
+            celda.dataset.raw = ajustada;
+            const hidden = celda.parentElement.querySelector('.crudo');
+            if (hidden) hidden.value = ajustada;
+            if (document.activeElement !== celda) celda.value = ajustada;
         });
     };
 
@@ -426,6 +470,15 @@
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
         th.append(orden, marca, nombre);
+        if (clave !== 'descripcion') {
+            const formula = document.createElement('input');
+            formula.className = 'formula-col';
+            formula.name = 'formulas[' + clave + ']';
+            formula.placeholder = 'Fórmula';
+            formula.maxLength = 200;
+            formula.autocomplete = 'off';
+            th.append(formula);
+        }
         if (clave !== 'total' && clave !== 'descripcion') {
             const quitar = document.createElement('button');
             quitar.type = 'button';
@@ -457,14 +510,47 @@
             if (hidden) hidden.value = input.value;
             if (!input.dataset.texto) recalcular(tabla, true);
         });
+        const aplicarFormulaColumna = (input) => {
+            const th = input.closest('th');
+            if (!th) return;
+            let nueva = input.value.trim();
+            if (nueva !== '' && !nueva.startsWith('=')) nueva = '=' + nueva;
+            input.value = nueva;
+            const anterior = input.dataset.anterior ?? (th.dataset.formula || '');
+            th.dataset.formula = nueva;
+            const clave = th.dataset.clave;
+            [...tabla.tBodies[0].rows].forEach((tr, indice) => {
+                const celda = tr.querySelector('td[data-clave="' + clave + '"] .celda');
+                if (!celda || celda.dataset.texto) return;
+                const raw = celda.dataset.raw || '';
+                const esperada = anterior ? formulaEnFila(anterior, indice + 1) : '';
+                if (raw !== '' && raw !== esperada) return;
+                const siguiente = nueva ? formulaEnFila(nueva, indice + 1) : '';
+                celda.dataset.raw = siguiente;
+                const hidden = celda.parentElement.querySelector('.crudo');
+                if (hidden) hidden.value = siguiente;
+                if (document.activeElement !== celda) celda.value = siguiente;
+            });
+            input.dataset.anterior = nueva;
+            recalcular(tabla, true);
+        };
         tabla.addEventListener('focusin', (evento) => {
             const input = evento.target;
+            if (input.classList && input.classList.contains('formula-col')) {
+                input.dataset.anterior = input.closest('th')?.dataset.formula || input.value.trim();
+                input.select();
+                return;
+            }
             if (!input.classList || !input.classList.contains('celda')) return;
             if (input.dataset.raw) input.value = input.dataset.raw;
             input.select();
         });
         tabla.addEventListener('focusout', (evento) => {
             const input = evento.target;
+            if (input.classList && input.classList.contains('formula-col')) {
+                aplicarFormulaColumna(input);
+                return;
+            }
             if (!input.classList || !input.classList.contains('celda') || input.dataset.texto) return;
             recalcular(tabla, true);
         });
@@ -481,10 +567,39 @@
             letras(tabla);
             recalcular(tabla, true);
         });
+        tabla.addEventListener('click', (evento) => {
+            const boton = evento.target.closest('.quitar-fila');
+            if (!boton || !tabla.contains(boton)) return;
+            const tr = boton.closest('tr');
+            const filas = [...tabla.tBodies[0].rows];
+            const indice = filas.indexOf(tr);
+            if (!tr || indice < 0) return;
+            if (!window.confirm('¿Quitar la fila ' + (indice + 1) + '?')) return;
+            if (filas.length === 1) {
+                tr.querySelectorAll('td[data-clave]').forEach((td) => {
+                    const encabezado = tabla.querySelector('th[data-clave="' + td.dataset.clave + '"]');
+                    const formula = encabezado?.dataset.formula || '';
+                    const raw = formula ? formulaEnFila(formula, 1) : '';
+                    const celda = td.querySelector('.celda');
+                    const hidden = td.querySelector('.crudo');
+                    if (celda) {
+                        celda.dataset.raw = raw;
+                        celda.value = raw;
+                    }
+                    if (hidden) hidden.value = raw;
+                });
+            } else {
+                ajustarFormulasAlBorrar(tabla, indice + 1);
+                tr.remove();
+            }
+            numerar(tabla);
+            reindexar(tabla);
+            recalcular(tabla, true);
+        });
         tabla.addEventListener('keydown', (evento) => {
             const campo = evento.target;
             if (!(campo instanceof HTMLInputElement)) return;
-            if (campo.classList.contains('etiqueta') && evento.key === 'Enter') {
+            if ((campo.classList.contains('etiqueta') || campo.classList.contains('formula-col')) && evento.key === 'Enter') {
                 evento.preventDefault();
                 campo.blur();
                 return;
@@ -536,11 +651,13 @@
         form?.querySelector('[data-agregar-fila]')?.addEventListener('click', () => {
             const indice = tabla.tBodies[0].rows.length;
             const tr = document.createElement('tr');
+            tr.append(crearMarcaFila(indice + 1));
             columnasDe(tabla).forEach((clave) => {
                 const encabezado = tabla.querySelector('th[data-clave="' + clave + '"]');
                 tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || ''));
             });
             tabla.tBodies[0].append(tr);
+            numerar(tabla);
             recalcular(tabla, true);
             tr.querySelector('.celda')?.focus();
         });

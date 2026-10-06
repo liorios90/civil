@@ -69,24 +69,27 @@ class HojaCalculo
 
         $orden = [];
         $etiquetas = [];
+        $formulas = [];
         foreach ($guardadas as $columna) {
             if (! is_array($columna)) {
                 continue;
             }
-            $clave = (string) ($columna['clave'] ?? '');
+            $clave = strtolower(trim((string) ($columna['clave'] ?? '')));
             $orden[] = $clave;
             $etiquetas[$clave] = (string) ($columna['etiqueta'] ?? '');
+            $formulas[$clave] = (string) ($columna['formula'] ?? '');
         }
 
-        return self::normalizar($orden, $etiquetas, $tipo);
+        return self::normalizar($orden, $etiquetas, $tipo, $formulas);
     }
 
     /**
      * @param  array<int, mixed>|null  $orden
      * @param  array<string, mixed>  $etiquetas
-     * @return list<array{clave: string, etiqueta: string}>
+     * @param  array<string, mixed>  $formulas
+     * @return list<array{clave: string, etiqueta: string, formula?: string}>
      */
-    public static function normalizar(?array $orden, array $etiquetas, string $tipo): array
+    public static function normalizar(?array $orden, array $etiquetas, string $tipo, array $formulas = []): array
     {
         if ($orden === null || $orden === []) {
             return self::columnasIniciales($tipo);
@@ -104,7 +107,12 @@ class HojaCalculo
             if ($etiqueta === '') {
                 $etiqueta = $clave === 'total' ? 'Total' : 'Columna';
             }
-            $columnas[] = ['clave' => $clave, 'etiqueta' => mb_substr($etiqueta, 0, 40)];
+            $columna = ['clave' => $clave, 'etiqueta' => mb_substr($etiqueta, 0, 40)];
+            $formula = self::formulaEscrita($formulas[$clave] ?? '');
+            if ($formula !== '') {
+                $columna['formula'] = $formula;
+            }
+            $columnas[] = $columna;
             if (count($columnas) >= 24) {
                 break;
             }
@@ -411,6 +419,80 @@ class HojaCalculo
         }
 
         return true;
+    }
+
+    /**
+     * @param  list<array{clave: string, etiqueta: string, formula?: string}>  $columnas
+     * @param  list<array{clave: string, etiqueta: string, formula?: string}>  $plantilla
+     * @param  iterable<mixed>  $lineas
+     * @return list<array{clave: string, etiqueta: string, formula?: string}>
+     */
+    public static function conFormulas(array $columnas, array $plantilla, iterable $lineas): array
+    {
+        $porNombre = [];
+        foreach ($plantilla as $columna) {
+            $formula = self::formulaEscrita($columna['formula'] ?? '');
+            if ($formula !== '') {
+                $porNombre[self::claveTexto($columna['etiqueta'] ?? '')] = $formula;
+            }
+        }
+
+        foreach ($columnas as $indice => $columna) {
+            if (($columna['clave'] ?? '') === 'descripcion' || self::formulaEscrita($columna['formula'] ?? '') !== '') {
+                continue;
+            }
+            $formula = $porNombre[self::claveTexto($columna['etiqueta'] ?? '')] ?? '';
+            if ($formula === '') {
+                $formula = self::formulaMasUsada($lineas, (string) $columna['clave']);
+            }
+            if ($formula !== '') {
+                $columnas[$indice]['formula'] = $formula;
+            }
+        }
+
+        return $columnas;
+    }
+
+    public static function formulaEscrita(mixed $formula): string
+    {
+        $formula = trim((string) $formula);
+        if ($formula === '') {
+            return '';
+        }
+        if (! str_starts_with($formula, '=')) {
+            $formula = '='.$formula;
+        }
+
+        return mb_substr($formula, 0, 200);
+    }
+
+    public static function formulaPatron(string $formula): string
+    {
+        return preg_replace('/([A-Za-z]+)(\d+)/', '${1}1', $formula) ?? $formula;
+    }
+
+    /**
+     * @param  iterable<mixed>  $lineas
+     */
+    private static function formulaMasUsada(iterable $lineas, string $clave): string
+    {
+        $conteo = [];
+        foreach ($lineas as $linea) {
+            $celdas = $linea instanceof MedicionLinea ? ($linea->celdas ?? []) : (is_array($linea) ? ($linea['celdas'] ?? []) : []);
+            $texto = trim((string) (is_array($celdas) ? ($celdas[$clave] ?? '') : ''));
+            if (! str_starts_with($texto, '=')) {
+                continue;
+            }
+            $texto = self::formulaEscrita($texto);
+            $patron = self::formulaPatron($texto);
+            $conteo[$patron] = ($conteo[$patron] ?? 0) + 1;
+        }
+        if ($conteo === []) {
+            return '';
+        }
+        arsort($conteo);
+
+        return (string) array_key_first($conteo);
     }
 
     public static function formulaEnFila(string $formula, int $fila): string

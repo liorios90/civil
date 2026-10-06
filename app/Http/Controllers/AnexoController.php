@@ -35,13 +35,15 @@ class AnexoController extends Controller
             'orden_columnas.*' => ['required', 'string', 'max:31'],
             'etiquetas' => ['nullable', 'array'],
             'etiquetas.*' => ['nullable', 'string', 'max:40'],
+            'formulas' => ['nullable', 'array'],
+            'formulas.*' => ['nullable', 'string', 'max:200'],
             'lineas' => ['nullable', 'array', 'max:200'],
             'lineas.*.celdas' => ['nullable', 'array'],
             'lineas.*.celdas.*' => ['nullable', 'string', 'max:500'],
         ]);
 
         $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
-        $columnas = HojaCalculo::normalizar($data['orden_columnas'] ?? null, $data['etiquetas'] ?? [], $tipo);
+        $columnas = HojaCalculo::normalizar($data['orden_columnas'] ?? null, $data['etiquetas'] ?? [], $tipo, $data['formulas'] ?? []);
         $claves = array_column($columnas, 'clave');
         $crudas = [];
         foreach ($data['lineas'] ?? [] as $linea) {

@@ -75,6 +75,43 @@ class HojaCalculoTest extends TestCase
         $this->assertEquals(40, $corte[0]['numeros']['total']);
     }
 
+    public function test_la_formula_de_la_columna_se_guarda_y_completa_las_filas(): void
+    {
+        $columnas = HojaCalculo::normalizar(
+            ['descripcion', 'e0', 'total'],
+            ['descripcion' => 'Descripción', 'e0' => 'altura', 'total' => 'Total'],
+            UnidadMedicion::NUMERO,
+            ['total' => 'altura*peso'],
+        );
+
+        $this->assertSame('=altura*peso', $columnas[2]['formula']);
+        $this->assertSame('=altura*peso', HojaCalculo::columnas($columnas, UnidadMedicion::NUMERO)[2]['formula']);
+
+        $sinFormula = [
+            ['clave' => 'descripcion', 'etiqueta' => 'Descripción'],
+            ['clave' => 'e0', 'etiqueta' => 'altura'],
+            ['clave' => 'total', 'etiqueta' => 'Total'],
+        ];
+        $plantilla = HojaCalculo::columnasDesdeMedicion([
+            ['etiqueta' => 'altura', 'formula' => ''],
+            ['etiqueta' => 'Total', 'formula' => '=altura*peso'],
+        ]);
+        $conPlantilla = HojaCalculo::conFormulas($sinFormula, $plantilla, []);
+        $this->assertSame('=altura*peso', $conPlantilla[2]['formula']);
+
+        $personalizada = HojaCalculo::conFormulas([
+            ['clave' => 'total', 'etiqueta' => 'Total', 'formula' => '=altura*2'],
+        ], $plantilla, []);
+        $this->assertSame('=altura*2', $personalizada[0]['formula']);
+
+        $desdeFilas = HojaCalculo::conFormulas($sinFormula, [], [
+            ['celdas' => ['total' => '=B2*C2', 'e0' => '4']],
+            ['celdas' => ['total' => '=B5*C5']],
+        ]);
+        $this->assertSame('=B1*C1', $desdeFilas[2]['formula']);
+        $this->assertSame('=B3*C3', HojaCalculo::formulaEnFila($desdeFilas[2]['formula'], 3));
+    }
+
     public function test_acepta_suma_promedio_y_referencia_circular(): void
     {
         $columnas = [
