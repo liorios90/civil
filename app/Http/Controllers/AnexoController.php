@@ -54,7 +54,7 @@ class AnexoController extends Controller
         $ultimo = -1;
         foreach ($crudas as $indice => $fila) {
             foreach ($fila as $texto) {
-                if ($texto !== '') {
+                if ($texto !== '' && ! str_starts_with($texto, '=')) {
                     $ultimo = $indice;
                     break;
                 }

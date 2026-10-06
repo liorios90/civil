@@ -39,7 +39,6 @@
         $m = fn ($v) => number_format((float) $v, 2);
         $q = fn ($v) => rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
         $enAplicacion = str_contains((string) request()->userAgent(), 'PlanillasApp');
-        $periodoAbierto = true;
     @endphp
     <!-- @if ($planilla)
         <p>Planilla {{ $planilla->numero }}. El anterior es el total arrastrado de la planilla anterior y no se escribe a mano.</p>
@@ -56,8 +55,6 @@
                         $rubro = $linea['rubro'];
                         $ejecucion = $linea['ejecucion'];
                         $k = $linea['calculo'];
-                        $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
-                        $bloqueada = $tieneHoja || ! $periodoAbierto;
                     @endphp
                     <article class="ficha" data-fila>
                         <div class="ficha-titulo">
@@ -75,20 +72,14 @@
                         <label>Unidad<input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></label>
                         <h3>Contratado</h3>
                         <div class="pares">
-                            <label>Cantidad<input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></label>
-                            <label>Unitario<input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></label>
+                            <label>Cantidad <b class="contratada">{{ $q($k['cantidad_contratada']) }}</b></label>
+                            <label>Unitario <b class="unitario">{{ $q($k['precio_unitario']) }}</b></label>
                         </div>
                         <p class="resultado">Total contratado <b class="total-contratado">{{ $m($k['total_contratado']) }}</b></p>
                         <h3>Cantidades ejecutadas</h3>
                         <div class="pares">
                             <label>Anterior <b class="anterior">{{ $q($k['cantidad_anterior']) }}</b></label>
-                            <label>Actual
-                                @if ($bloqueada)
-                                    <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
-                                @else
-                                    <input class="n actual" name="filas[{{ $i }}][cantidad_actual]" value="{{ $q($k['cantidad_actual']) }}">
-                                @endif
-                            </label>
+                            <label>Actual <b class="actual">{{ $q($k['cantidad_actual']) }}</b></label>
                         </div>
                         <p class="resultado">Total cantidad <b class="total-cantidad">{{ $m($k['cantidad_total']) }}</b></p>
                         <h3>Total en dólares</h3>
@@ -116,7 +107,7 @@
                         <h3>Cantidades ejecutadas</h3>
                         <div class="pares">
                             <label>Anterior <b class="anterior">0</b></label>
-                            <label>Actual<input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></label>
+                            <label>Actual <b class="actual">0</b></label>
                         </div>
                         <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
                         <h3>Total en dólares</h3>
@@ -188,8 +179,6 @@
                                 $rubro = $linea['rubro'];
                                 $ejecucion = $linea['ejecucion'];
                                 $k = $linea['calculo'];
-                                $tieneHoja = $ejecucion && $ejecucion->anexos->contains(fn ($anexo) => $anexo->lineas->isNotEmpty());
-                                $bloqueada = $tieneHoja || ! $periodoAbierto;
                             @endphp
                             <tr data-fila>
                                 <td class="num">{{ $rubro->numero }}<input type="hidden" name="filas[{{ $i }}][id]" value="{{ $rubro->id }}"></td>
@@ -201,17 +190,11 @@
                                     @endif
                                 </td>
                                 <td><input class="u" name="filas[{{ $i }}][unidad]" value="{{ $rubro->unidad }}"></td>
-                                <td><input class="n contratada" name="filas[{{ $i }}][cantidad_contratada]" value="{{ $k['cantidad_contratada'] + 0 }}"></td>
-                                <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]" value="{{ $k['precio_unitario'] + 0 }}"></td>
+                                <td class="num contratada">{{ $q($k['cantidad_contratada']) }}</td>
+                                <td class="num unitario">{{ $q($k['precio_unitario']) }}</td>
                                 <td class="num total-contratado">{{ $m($k['total_contratado']) }}</td>
                                 <td class="num anterior">{{ $q($k['cantidad_anterior']) }}</td>
-                                <td>
-                                    @if ($bloqueada)
-                                        <input class="n actual" value="{{ $q($k['cantidad_actual']) }}" readonly>
-                                    @else
-                                        <input class="n actual" name="filas[{{ $i }}][cantidad_actual]" value="{{ $q($k['cantidad_actual']) }}">
-                                    @endif
-                                </td>
+                                <td class="num actual">{{ $q($k['cantidad_actual']) }}</td>
                                 <td class="num total-cantidad">{{ $m($k['cantidad_total']) }}</td>
                                 <td class="num valor-anterior">{{ $m($k['valor_anterior']) }}</td>
                                 <td class="num valor-actual">{{ $m($k['valor_actual']) }}</td>
@@ -232,7 +215,7 @@
                                 <td><input class="n unitario" name="filas[{{ $i }}][precio_unitario]"></td>
                                 <td class="num total-contratado">0.00</td>
                                 <td class="num anterior">0</td>
-                                <td><input class="n actual" name="filas[{{ $i }}][cantidad_actual]"></td>
+                                <td class="num actual">0</td>
                                 <td class="num total-cantidad">0.00</td>
                                 <td class="num valor-anterior">0.00</td>
                                 <td class="num valor-actual">0.00</td>
@@ -277,7 +260,7 @@
                     <h3>Cantidades ejecutadas</h3>
                     <div class="pares">
                         <label>Anterior <b class="anterior">0</b></label>
-                        <label>Actual<input class="n actual" name="filas[__i__][cantidad_actual]"></label>
+                        <label>Actual <b class="actual">0</b></label>
                     </div>
                     <p class="resultado">Total cantidad <b class="total-cantidad">0.00</b></p>
                     <h3>Total en dólares</h3>
@@ -296,7 +279,7 @@
                     <td><input class="n unitario" name="filas[__i__][precio_unitario]"></td>
                     <td class="num total-contratado">0.00</td>
                     <td class="num anterior">0</td>
-                    <td><input class="n actual" name="filas[__i__][cantidad_actual]"></td>
+                    <td class="num actual">0</td>
                     <td class="num total-cantidad">0.00</td>
                     <td class="num valor-anterior">0.00</td>
                     <td class="num valor-actual">0.00</td>

@@ -27,6 +27,54 @@ class HojaCalculoTest extends TestCase
         $this->assertSame('=I1*2', $res[1]['celdas']['total']);
     }
 
+    public function test_la_plantilla_de_medicion_usa_nombres_y_descripcion(): void
+    {
+        $columnas = HojaCalculo::columnasDesdeMedicion([
+            ['etiqueta' => 'altura', 'formula' => ''],
+            ['etiqueta' => 'peso', 'formula' => ''],
+            ['etiqueta' => 'Prof. promedio', 'formula' => '=(C1+D1+E1)/3'],
+            ['etiqueta' => '=altura*peso', 'formula' => ''],
+        ]);
+
+        $this->assertSame('descripcion', $columnas[0]['clave']);
+        $this->assertSame('Descripción', $columnas[0]['etiqueta']);
+        $this->assertSame('total', $columnas[4]['clave']);
+        $this->assertSame('Total', $columnas[4]['etiqueta']);
+        $this->assertSame('=altura*peso', $columnas[4]['formula']);
+        $this->assertSame('=(C2+D2+E2)/3', HojaCalculo::formulaEnFila($columnas[3]['formula'], 2));
+        $this->assertSame([], HojaCalculo::columnasDesdeMedicion([['etiqueta' => '  ', 'formula' => '']]));
+
+        $filas = [[
+            'descripcion' => 'tramo 1',
+            'e0' => '2',
+            'e1' => '4',
+            'e2' => '',
+            'total' => '=altura*peso',
+        ]];
+        $res = HojaCalculo::resolver($filas, $columnas, UnidadMedicion::NUMERO);
+
+        $this->assertSame('tramo 1', $res[0]['descripcion']);
+        $this->assertEquals(8, $res[0]['numeros']['total']);
+
+        $trapecio = HojaCalculo::columnasDesdeMedicion([
+            ['etiqueta' => 'Largo', 'formula' => ''],
+            ['etiqueta' => 'Ancho', 'formula' => ''],
+            ['etiqueta' => 'Prof. izq', 'formula' => ''],
+            ['etiqueta' => 'Prof. der', 'formula' => ''],
+            ['etiqueta' => 'Total', 'formula' => '=largo*ancho*((prof. izq+prof. der)/2)'],
+        ]);
+        $corte = HojaCalculo::resolver([[
+            'descripcion' => 'corte',
+            'e0' => '10',
+            'e1' => '2',
+            'e2' => '1',
+            'e3' => '3',
+            'total' => '=largo*ancho*((prof. izq+prof. der)/2)',
+        ]], $trapecio, UnidadMedicion::NUMERO);
+
+        $this->assertEquals(40, $corte[0]['numeros']['total']);
+    }
+
     public function test_acepta_suma_promedio_y_referencia_circular(): void
     {
         $columnas = [

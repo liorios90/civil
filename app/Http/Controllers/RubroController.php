@@ -30,9 +30,11 @@ class RubroController extends Controller
                 : null;
 
             if (! array_key_exists('descripcion', $fila)) {
+                if ($existente && array_key_exists('unidad', $fila) && trim((string) $fila['unidad']) !== '') {
+                    $existente->update(['unidad' => $fila['unidad']]);
+                }
                 if ($existente) {
-                    $this->guardarContratado($existente, $fila);
-                    $this->guardarCantidades($frente, $existente, $fila);
+                    $this->guardarCantidades($frente, $existente);
                 }
                 continue;
             }
@@ -50,14 +52,18 @@ class RubroController extends Controller
             ];
 
             if ($existente) {
-                $existente->update($datos);
+                $existente->update([
+                    'descripcion' => $datos['descripcion'],
+                    'unidad' => $datos['unidad'],
+                    'tipo_hoja' => $datos['tipo_hoja'],
+                ]);
                 $rubro = $existente;
             } else {
                 $numero = (int) $frente->rubros()->max('numero') + 1;
                 $rubro = $frente->rubros()->create($datos + ['numero' => $numero]);
             }
 
-            $this->guardarCantidades($frente, $rubro, $fila);
+            $this->guardarCantidades($frente, $rubro);
         }
 
         return redirect()->route('frentes.show', $frente)->with('estado', 'Hoja guardada.');
@@ -75,7 +81,7 @@ class RubroController extends Controller
             'precio_unitario' => round((float) $data['precio_unitario'], 2),
         ]);
 
-        $this->guardarCantidades($frente, $rubro, $data);
+        $this->guardarCantidades($frente, $rubro);
 
         return redirect()->route('frentes.show', $frente);
     }
@@ -89,7 +95,7 @@ class RubroController extends Controller
             'cantidad_contratada' => round((float) $data['cantidad_contratada'], 2),
             'precio_unitario' => round((float) $data['precio_unitario'], 2),
         ]);
-        $this->guardarCantidades($rubro->frente, $rubro, $data);
+        $this->guardarCantidades($rubro->frente, $rubro);
 
         return redirect()->route('frentes.show', $rubro->frente);
     }
@@ -117,27 +123,7 @@ class RubroController extends Controller
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function guardarContratado(Rubro $rubro, array $data): void
-    {
-        $cambios = [];
-        if (array_key_exists('cantidad_contratada', $data)) {
-            $cambios['cantidad_contratada'] = round((float) ($data['cantidad_contratada'] ?? 0), 2);
-        }
-        if (array_key_exists('precio_unitario', $data)) {
-            $cambios['precio_unitario'] = round((float) ($data['precio_unitario'] ?? 0), 2);
-        }
-        if ($cambios !== []) {
-            $rubro->update($cambios);
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function guardarCantidades(Frente $frente, Rubro $rubro, array $data): void
+    private function guardarCantidades(Frente $frente, Rubro $rubro): void
     {
         $planilla = $frente->contrato->planillas()->latest('id')->first();
         if (! $planilla) {
@@ -150,12 +136,6 @@ class RubroController extends Controller
             ['cantidad_anterior' => $anterior, 'cantidad_actual' => 0],
         );
 
-        $cambios = ['cantidad_anterior' => $anterior];
-        $tieneHoja = $ejecucion->anexos()->whereHas('lineas')->exists();
-        if (! $tieneHoja && array_key_exists('cantidad_actual', $data)) {
-            $cambios['cantidad_actual'] = round((float) ($data['cantidad_actual'] ?? 0), 2);
-        }
-
-        $ejecucion->update($cambios);
+        $ejecucion->update(['cantidad_anterior' => $anterior]);
     }
 }

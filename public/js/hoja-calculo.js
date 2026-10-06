@@ -63,11 +63,29 @@
         return null;
     };
 
-    function Motor(crudas, claves, val, tipo) {
+    const patronNombre = (etiqueta) => {
+        let patron = '';
+        for (const caracter of etiqueta.trim()) {
+            if (/\s/.test(caracter)) {
+                patron += '\\s+';
+                continue;
+            }
+            const base = caracter.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+            const clases = { a: '[aáàä]', e: '[eéèë]', i: '[iíìï]', o: '[oóòö]', u: '[uúùü]', n: '[nñ]' };
+            if (clases[base]) patron += clases[base];
+            else if (/^[a-z0-9]$/.test(base)) patron += base;
+            else patron += caracter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        return patron;
+    };
+
+    function Motor(crudas, claves, val, tipo, etiquetas) {
         this.crudas = crudas;
         this.claves = claves;
         this.val = val;
         this.tipo = tipo;
+        this.etiquetas = etiquetas || [];
+        this.filaFormula = 0;
         this.src = '';
         this.i = 0;
         this.pila = {};
@@ -100,6 +118,8 @@
             this.pila[marca] = true;
             const src = this.src;
             const pos = this.i;
+            const filaFormula = this.filaFormula;
+            this.filaFormula = fila;
             this.src = texto.slice(1);
             this.i = 0;
             let valor = this.expresion();
@@ -107,6 +127,7 @@
             if (this.ciclo || this.i < this.src.length) valor = null;
             this.src = src;
             this.i = pos;
+            this.filaFormula = filaFormula;
             delete this.pila[marca];
             this.memo[marca] = valor;
             return enFormula ? (valor == null ? 0 : valor) : valor;
@@ -186,6 +207,12 @@
             this.i += num[1].length;
             return Number(num[1]);
         }
+        const columna = this.consumirColumna();
+        if (columna != null) {
+            const referida = this.leer(this.filaFormula, columna, true);
+            if (this.ciclo) return null;
+            return referida == null ? 0 : referida;
+        }
         const nombre = resto.match(/^([A-Za-z]+)/);
         if (!nombre) return null;
         this.i += nombre[1].length;
@@ -260,6 +287,28 @@
         return valor == null ? null : [valor];
     };
 
+    Motor.prototype.consumirColumna = function () {
+        const resto = this.src.slice(this.i);
+        let mejor = null;
+        let mejorLargo = 0;
+        this.etiquetas.forEach((etiqueta, columna) => {
+            const nombre = String(etiqueta || '').trim();
+            if (!nombre || nombre.startsWith('=')) return;
+            const coincidencia = resto.match(new RegExp('^' + patronNombre(nombre), 'i'));
+            if (!coincidencia) return;
+            const largo = coincidencia[0].length;
+            const siguiente = resto[largo] || '';
+            if (siguiente === '(' || /[A-Za-z0-9_]/.test(siguiente)) return;
+            if (largo > mejorLargo) {
+                mejorLargo = largo;
+                mejor = columna;
+            }
+        });
+        if (mejor == null) return null;
+        this.i += mejorLargo;
+        return mejor;
+    };
+
     Motor.prototype.funcion = function (nombre, args) {
         if (nombre === 'SUMA' || nombre === 'SUM') return redondo(args.reduce((a, b) => a + b, 0));
         if (nombre === 'PROMEDIO' || nombre === 'PROM' || nombre === 'AVERAGE') {
@@ -272,9 +321,9 @@
         return null;
     };
 
-    const resolver = (crudas, claves, tipo) => {
+    const resolver = (crudas, claves, tipo, etiquetas) => {
         let val = crudas.map(() => Object.fromEntries(claves.map((clave) => [clave, null])));
-        const motor = new Motor(crudas, claves, val, tipo);
+        const motor = new Motor(crudas, claves, val, tipo, etiquetas);
         for (let pasada = 0; pasada < 12; pasada += 1) {
             const antes = JSON.stringify(val);
             const siguiente = val.map((fila) => ({ ...fila }));
@@ -319,8 +368,9 @@
 
     const recalcular = (tabla, conAutomaticos) => {
         const claves = columnasDe(tabla);
+        const etiquetas = [...tabla.querySelectorAll('thead th .etiqueta')].map((input) => input.value);
         const crudas = crudasDe(tabla);
-        const valores = resolver(crudas, claves, tabla.dataset.tipo || 'numero');
+        const valores = resolver(crudas, claves, tabla.dataset.tipo || 'numero', etiquetas);
         [...tabla.tBodies[0].rows].forEach((tr, r) => {
             tr.querySelectorAll('td').forEach((td) => {
                 const input = td.querySelector('.celda');
@@ -339,18 +389,23 @@
         });
     };
 
-    const crearCelda = (clave, indice) => {
+    const formulaEnFila = (formula, fila) => formula.replace(/([A-Za-z]+)1(?!\d)/g, (_, letras) => letras + String(fila));
+
+    const crearCelda = (clave, indice, formula) => {
         const td = document.createElement('td');
         td.dataset.clave = clave;
         const input = document.createElement('input');
         input.className = clave === 'descripcion' ? 'celda' : 'n celda';
         if (clave === 'descripcion') input.dataset.texto = '1';
-        input.dataset.raw = '';
+        const raw = formula ? formulaEnFila(formula, indice + 1) : '';
+        input.dataset.raw = raw;
+        input.value = raw;
         input.autocomplete = 'off';
         const hidden = document.createElement('input');
         hidden.type = 'hidden';
         hidden.className = 'crudo';
         hidden.name = 'lineas[' + indice + '][celdas][' + clave + ']';
+        hidden.value = raw;
         td.append(input, hidden);
         return td;
     };
@@ -371,7 +426,7 @@
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
         th.append(orden, marca, nombre);
-        if (clave !== 'total') {
+        if (clave !== 'total' && clave !== 'descripcion') {
             const quitar = document.createElement('button');
             quitar.type = 'button';
             quitar.className = 'quitar-col';
@@ -417,7 +472,7 @@
             const boton = evento.target.closest('.quitar-col');
             if (!boton || !tabla.contains(boton)) return;
             const th = boton.closest('th');
-            if (!th || th.dataset.clave === 'total') return;
+            if (!th || th.dataset.clave === 'total' || th.dataset.clave === 'descripcion') return;
             const nombre = th.querySelector('.etiqueta')?.value || 'esta columna';
             if (!window.confirm('¿Quitar la columna ' + nombre + '?')) return;
             const indice = [...th.parentElement.children].indexOf(th);
@@ -481,8 +536,12 @@
         form?.querySelector('[data-agregar-fila]')?.addEventListener('click', () => {
             const indice = tabla.tBodies[0].rows.length;
             const tr = document.createElement('tr');
-            columnasDe(tabla).forEach((clave) => tr.append(crearCelda(clave, indice)));
+            columnasDe(tabla).forEach((clave) => {
+                const encabezado = tabla.querySelector('th[data-clave="' + clave + '"]');
+                tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || ''));
+            });
             tabla.tBodies[0].append(tr);
+            recalcular(tabla, true);
             tr.querySelector('.celda')?.focus();
         });
         form?.addEventListener('submit', () => reindexar(tabla));

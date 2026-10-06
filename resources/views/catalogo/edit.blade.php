@@ -17,6 +17,7 @@
             </div>
         @endif
         <p>Estos rubros son de su empresa. En un contrato puede traerlos y quitar los que no use. Cambiar el catálogo no modifica los contratos que ya existen.</p>
+        <p>En Medición puede indicar qué datos se escriben y qué fórmula calcula el total. Si un rubro no tiene medición, al planillar se abre la hoja normal.</p>
         <form method="post" action="{{ route('catalogo.update') }}">
             @csrf
             @method('put')
@@ -46,6 +47,11 @@
                                 <td class="calc total"></td>
                                 <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
                             </tr>
+                            <tr data-config>
+                                <td colspan="7">
+                                    @include('catalogo.medicion', ['indice' => $i, 'medicion' => $rubro->medicion ?? []])
+                                </td>
+                            </tr>
                         @endforeach
                         @for ($n = 0; $n < 3; $n++)
                             @php($i = $rubros->count() + $n)
@@ -57,6 +63,11 @@
                                 <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]"></td>
                                 <td class="calc total"></td>
                                 <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
+                            </tr>
+                            <tr data-config>
+                                <td colspan="7">
+                                    @include('catalogo.medicion', ['indice' => $i, 'medicion' => []])
+                                </td>
                             </tr>
                         @endfor
                     </tbody>
@@ -73,6 +84,18 @@
                     <td class="calc total"></td>
                     <td><button class="danger" type="button" data-quitar>Eliminar</button></td>
                 </tr>
+                <tr data-config>
+                    <td colspan="7">
+                        @include('catalogo.medicion', ['indice' => '__i__', 'medicion' => []])
+                    </td>
+                </tr>
+            </template>
+            <template id="dato-nuevo">
+                <div class="dato" data-dato>
+                    <input name="filas[__i__][medicion][__j__][etiqueta]" placeholder="Nombre del dato" maxlength="40">
+                    <input name="filas[__i__][medicion][__j__][formula]" placeholder="Fórmula, ej. =altura*peso" maxlength="200">
+                    <button class="danger" type="button" data-quitar-dato>Quitar</button>
+                </div>
             </template>
             <p class="acciones"><button type="submit">Guardar catálogo</button></p>
         </form>
@@ -84,6 +107,15 @@
         <p><input type="file" name="rubros_excel" accept=".xlsx,.xls" required></p>
         <p><button type="submit">Cargar Excel</button></p>
     </form>
+    <style>
+        .medicion { margin: 4px 0 12px; padding: 10px 12px; background: #f7fafc; border: 1px solid #d5dde5; border-radius: 8px; }
+        .medicion-titulo { margin: 0 0 4px; font-weight: 700; }
+        .medicion-ayuda { margin: 0 0 8px; color: #4a5b6d; font-size: 13px; }
+        .dato { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; }
+        .dato-fijo { grid-template-columns: 1fr 1fr; }
+        .dato-fijo input { background: #eef3f7; }
+        .medicion-fijo { color: #4a5b6d; font-size: 13px; }
+    </style>
     <script>
         const tbody = document.querySelector('table.hoja tbody');
         const enlazar = (fila) => {
@@ -101,8 +133,33 @@
         };
         tbody.querySelectorAll('tr').forEach(enlazar);
         tbody.addEventListener('click', (evento) => {
+            const quitarDato = evento.target.closest('[data-quitar-dato]');
+            if (quitarDato) {
+                quitarDato.closest('[data-dato]')?.remove();
+                return;
+            }
             const boton = evento.target.closest('[data-quitar]');
-            if (boton) boton.closest('tr')?.remove();
+            if (!boton) return;
+            const fila = boton.closest('tr');
+            if (fila?.nextElementSibling?.hasAttribute('data-config')) fila.nextElementSibling.remove();
+            fila?.remove();
+        });
+        tbody.addEventListener('click', (evento) => {
+            const boton = evento.target.closest('[data-agregar-dato]');
+            if (!boton) return;
+            const config = boton.closest('tr');
+            const fila = config?.previousElementSibling;
+            const nombre = fila?.querySelector('[name$="[descripcion]"]')?.name || '';
+            const coincidencia = nombre.match(/filas\[(\d+|__i__)\]/);
+            const i = coincidencia ? coincidencia[1] : '0';
+            const lista = boton.parentElement.parentElement.querySelector('[data-datos]');
+            const j = lista.querySelectorAll('[data-dato]').length;
+            const dato = document.getElementById('dato-nuevo').content.cloneNode(true).querySelector('[data-dato]');
+            dato.querySelectorAll('[name]').forEach((campo) => {
+                campo.name = campo.name.replace('__i__', i).replace('__j__', String(j));
+            });
+            lista.appendChild(dato);
+            dato.querySelector('input')?.focus();
         });
         const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
             const coincidencia = campo.name.match(/filas\[(\d+)\]/);
@@ -110,12 +167,14 @@
         });
         let indice = Math.max(-1, ...indices) + 1;
         document.getElementById('agregar-rubro').addEventListener('click', () => {
-            const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('tr');
-            fila.querySelectorAll('[name]').forEach((campo) => {
-                campo.name = campo.name.replace('__i__', String(indice));
-            });
+            const contenido = document.getElementById('fila-nueva').content.cloneNode(true);
+            const i = String(indice);
             indice += 1;
-            tbody.appendChild(fila);
+            contenido.querySelectorAll('[name]').forEach((campo) => {
+                campo.name = campo.name.replaceAll('__i__', i);
+            });
+            const fila = contenido.querySelector('[data-fila]');
+            tbody.appendChild(contenido);
             enlazar(fila);
             fila.querySelector('input')?.focus();
         });
@@ -132,13 +191,16 @@
             let visibles = 0;
             let guardados = 0;
             tbody.querySelectorAll('[data-fila]').forEach((fila) => {
+                const config = fila.nextElementSibling?.hasAttribute('data-config') ? fila.nextElementSibling : null;
                 if (fila.hasAttribute('data-nuevo')) {
                     fila.hidden = false;
+                    if (config) config.hidden = false;
                     return;
                 }
                 guardados += 1;
                 const coincide = consulta === '' || textoFila(fila).includes(consulta);
                 fila.hidden = !coincide;
+                if (config) config.hidden = !coincide;
                 if (coincide) visibles += 1;
             });
             aviso.hidden = consulta === '' || visibles > 0 || guardados === 0;

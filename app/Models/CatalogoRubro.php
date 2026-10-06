@@ -9,7 +9,7 @@ class CatalogoRubro extends Model
 {
     protected $fillable = [
         'empresa_id', 'numero', 'descripcion', 'unidad',
-        'cantidad_contratada', 'precio_unitario',
+        'cantidad_contratada', 'precio_unitario', 'medicion',
     ];
 
     protected function casts(): array
@@ -17,6 +17,7 @@ class CatalogoRubro extends Model
         return [
             'cantidad_contratada' => 'decimal:4',
             'precio_unitario' => 'decimal:4',
+            'medicion' => 'array',
         ];
     }
 

@@ -75,6 +75,7 @@ class CatalogoController extends Controller
                     'unidad' => mb_substr(trim((string) ($fila['unidad'] ?? '')) ?: 'u', 0, 20),
                     'cantidad_contratada' => $fila['cantidad_contratada'] ?? 0,
                     'precio_unitario' => $fila['precio_unitario'] ?? 0,
+                    'medicion' => $this->medicion($fila),
                 ]);
             }
         });
@@ -102,7 +103,48 @@ class CatalogoController extends Controller
             'filas.*.unidad' => ['nullable', 'string', 'max:20'],
             'filas.*.cantidad_contratada' => ['nullable', 'numeric'],
             'filas.*.precio_unitario' => ['nullable', 'numeric'],
+            'filas.*.medicion' => ['nullable', 'array', 'max:16'],
+            'filas.*.medicion.*.etiqueta' => ['nullable', 'string', 'max:40'],
+            'filas.*.medicion.*.formula' => ['nullable', 'string', 'max:200'],
         ])['filas'] ?? [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $fila
+     * @return array<int, array{etiqueta: string, formula: string}>|null
+     */
+    private function medicion(array $fila): ?array
+    {
+        $datos = [];
+        foreach ($fila['medicion'] ?? [] as $dato) {
+            if (! is_array($dato)) {
+                continue;
+            }
+            $etiqueta = trim((string) ($dato['etiqueta'] ?? ''));
+            $formula = trim((string) ($dato['formula'] ?? ''));
+            if ($etiqueta === '' && $formula === '') {
+                continue;
+            }
+            if ($formula === '' && str_starts_with($etiqueta, '=')) {
+                $formula = $etiqueta;
+                $etiqueta = 'Total';
+            }
+            if ($etiqueta === '') {
+                $etiqueta = 'Total';
+            }
+            if ($formula !== '' && ! str_starts_with($formula, '=')) {
+                $formula = '='.$formula;
+            }
+            $datos[] = [
+                'etiqueta' => mb_substr($etiqueta, 0, 40),
+                'formula' => mb_substr($formula, 0, 200),
+            ];
+            if (count($datos) >= 16) {
+                break;
+            }
+        }
+
+        return $datos === [] ? null : $datos;
     }
 
     private function rubros(Request $request)

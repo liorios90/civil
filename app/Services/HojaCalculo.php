@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Anexo;
+use App\Models\CatalogoRubro;
 use App\Models\MedicionLinea;
+use App\Models\Rubro;
 
 class HojaCalculo
 {
@@ -19,6 +21,11 @@ class HojaCalculo
     private array $val;
 
     private string $tipo;
+
+    /** @var list<string> */
+    private array $etiquetas;
+
+    private int $filaFormula = 0;
 
     private string $src = '';
 
@@ -125,7 +132,11 @@ class HojaCalculo
             }
         }
 
-        $motor = new self($crudas, $claves, $val, $tipo);
+        $etiquetas = [];
+        foreach ($columnas as $columna) {
+            $etiquetas[] = (string) ($columna['etiqueta'] ?? '');
+        }
+        $motor = new self($crudas, $claves, $val, $tipo, $etiquetas);
         for ($pasada = 0; $pasada < 12; $pasada++) {
             $antes = $val;
             foreach ($crudas as $r => $fila) {
@@ -194,7 +205,12 @@ class HojaCalculo
                     continue;
                 }
                 $numero = $resuelta['numeros'][$clave] ?? null;
-                $fila[$clave] = $numero === null ? '' : number_format($numero, 2, '.', '');
+                $escrito = (string) ($resuelta['celdas'][$clave] ?? '');
+                if ($numero === null) {
+                    $fila[$clave] = str_starts_with($escrito, '=') ? '' : $escrito;
+                } else {
+                    $fila[$clave] = number_format($numero, 2, '.', '');
+                }
             }
             $filas[] = $fila;
         }
@@ -298,6 +314,126 @@ class HojaCalculo
         return $letra;
     }
 
+    /**
+     * @param  array<int, mixed>  $medicion
+     * @return list<array{clave: string, etiqueta: string, formula: string}>
+     */
+    public static function columnasDesdeMedicion(array $medicion): array
+    {
+        $datos = [];
+        foreach ($medicion as $dato) {
+            if (! is_array($dato)) {
+                continue;
+            }
+            $etiqueta = trim((string) ($dato['etiqueta'] ?? ''));
+            if ($etiqueta === '') {
+                continue;
+            }
+            $formula = trim((string) ($dato['formula'] ?? ''));
+            if ($formula !== '' && ! str_starts_with($formula, '=')) {
+                $formula = '='.$formula;
+            }
+            $datos[] = [
+                'etiqueta' => mb_substr($etiqueta, 0, 40),
+                'formula' => mb_substr($formula, 0, 200),
+            ];
+        }
+        if ($datos === []) {
+            return [];
+        }
+
+        $ultima = count($datos) - 1;
+        $columnas = [[
+            'clave' => 'descripcion',
+            'etiqueta' => 'Descripción',
+            'formula' => '',
+        ]];
+        foreach ($datos as $indice => $dato) {
+            $etiqueta = $dato['etiqueta'];
+            $formula = $dato['formula'];
+            if ($formula === '' && str_starts_with($etiqueta, '=')) {
+                $formula = $etiqueta;
+                $etiqueta = 'Total';
+            }
+            $columnas[] = [
+                'clave' => $indice === $ultima ? 'total' : 'e'.$indice,
+                'etiqueta' => $etiqueta,
+                'formula' => $formula,
+            ];
+        }
+
+        return $columnas;
+    }
+
+    /**
+     * @return list<array{clave: string, etiqueta: string, formula: string}>
+     */
+    public static function plantillaPara(Rubro $rubro): array
+    {
+        $empresaId = (int) ($rubro->frente?->contrato?->empresa_id ?? 0);
+        $buscada = self::claveTexto($rubro->descripcion);
+        if ($empresaId < 1 || $buscada === '') {
+            return [];
+        }
+
+        $catalogo = CatalogoRubro::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('numero')
+            ->get();
+
+        foreach ($catalogo as $item) {
+            if (self::claveTexto($item->descripcion) !== $buscada || ! is_array($item->medicion)) {
+                continue;
+            }
+            $columnas = self::columnasDesdeMedicion($item->medicion);
+            if ($columnas !== []) {
+                return $columnas;
+            }
+        }
+
+        return [];
+    }
+
+    public static function hojaVacia(Anexo $anexo): bool
+    {
+        foreach ($anexo->lineas as $linea) {
+            if (trim((string) $linea->descripcion) !== '' || ! empty($linea->celdas)) {
+                return false;
+            }
+            foreach (self::FIJAS as $campo) {
+                if ($campo === 'descripcion') {
+                    continue;
+                }
+                if ((float) $linea->getAttribute($campo) != 0.0) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    public static function formulaEnFila(string $formula, int $fila): string
+    {
+        $formula = trim($formula);
+        if ($formula === '' || $fila < 1) {
+            return $formula;
+        }
+
+        return preg_replace_callback('/([A-Za-z]+)1(?!\d)/', function (array $coincidencia) use ($fila): string {
+            return $coincidencia[1].$fila;
+        }, $formula) ?? $formula;
+    }
+
+    public static function claveTexto(?string $texto): string
+    {
+        $texto = mb_strtolower(trim((string) $texto));
+        $texto = strtr($texto, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n']);
+        $texto = preg_replace('/\s+/u', ' ', $texto) ?? $texto;
+
+        return $texto;
+    }
+
     public static function indiceLetra(string $letras): int
     {
         $n = 0;
@@ -315,13 +451,15 @@ class HojaCalculo
      * @param  list<array<string, string>>  $raw
      * @param  list<string>  $claves
      * @param  array<int, array<string, ?float>>  $val
+     * @param  list<string>  $etiquetas
      */
-    private function __construct(array $raw, array $claves, array $val, string $tipo)
+    private function __construct(array $raw, array $claves, array $val, string $tipo, array $etiquetas = [])
     {
         $this->raw = $raw;
         $this->claves = $claves;
         $this->val = $val;
         $this->tipo = $tipo;
+        $this->etiquetas = $etiquetas;
     }
 
     public function valorDe(int $fila, int $col): ?float
@@ -356,6 +494,8 @@ class HojaCalculo
             $this->pila[$marca] = true;
             $src = $this->src;
             $pos = $this->i;
+            $filaFormula = $this->filaFormula;
+            $this->filaFormula = $fila;
             $this->src = substr($texto, 1);
             $this->i = 0;
             $valor = $this->expresion();
@@ -365,6 +505,7 @@ class HojaCalculo
             }
             $this->src = $src;
             $this->i = $pos;
+            $this->filaFormula = $filaFormula;
             unset($this->pila[$marca]);
             $this->memo[$marca] = $valor;
 
@@ -500,6 +641,15 @@ class HojaCalculo
 
             return (float) $numero[1];
         }
+        $columna = $this->consumirColumna();
+        if ($columna !== null) {
+            $referida = $this->leer($this->filaFormula, $columna, true);
+            if ($this->ciclo) {
+                return null;
+            }
+
+            return $referida ?? 0.0;
+        }
         if (! preg_match('/\G([A-Za-z]+)/A', $this->src, $nombre, 0, $this->i)) {
             return null;
         }
@@ -617,6 +767,62 @@ class HojaCalculo
             'REDONDEAR', 'ROUND' => isset($args[0]) ? round($args[0], (int) ($args[1] ?? 0)) : null,
             default => null,
         };
+    }
+
+    private function consumirColumna(): ?int
+    {
+        $resto = substr($this->src, $this->i);
+        $mejor = null;
+        $mejorLargo = 0;
+        foreach ($this->etiquetas as $columna => $etiqueta) {
+            $etiqueta = trim($etiqueta);
+            if ($etiqueta === '' || str_starts_with($etiqueta, '=')) {
+                continue;
+            }
+            $patron = self::patronNombre($etiqueta);
+            if ($patron === '' || ! preg_match('/\A'.$patron.'/iu', $resto, $coincidencia)) {
+                continue;
+            }
+            $largo = strlen($coincidencia[0]);
+            $siguiente = $resto[$largo] ?? '';
+            if ($siguiente === '(' || ($siguiente !== '' && preg_match('/[A-Za-z0-9_]/', $siguiente))) {
+                continue;
+            }
+            if ($largo > $mejorLargo) {
+                $mejorLargo = $largo;
+                $mejor = $columna;
+            }
+        }
+        if ($mejor === null) {
+            return null;
+        }
+        $this->i += $mejorLargo;
+
+        return $mejor;
+    }
+
+    private static function patronNombre(string $etiqueta): string
+    {
+        $partes = [];
+        foreach (preg_split('//u', $etiqueta, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $caracter) {
+            if (preg_match('/\s/u', $caracter)) {
+                $partes[] = '\s+';
+
+                continue;
+            }
+            $base = strtr(mb_strtolower($caracter), ['á' => 'a', 'à' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ë' => 'e', 'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'ñ' => 'n']);
+            $partes[] = match ($base) {
+                'a' => '[aáàä]',
+                'e' => '[eéèë]',
+                'i' => '[iíìï]',
+                'o' => '[oóòö]',
+                'u' => '[uúùü]',
+                'n' => '[nñ]',
+                default => preg_quote($base, '/'),
+            };
+        }
+
+        return implode('', $partes);
     }
 
     private function espacios(): void
