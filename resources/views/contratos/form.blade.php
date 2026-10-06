@@ -61,6 +61,25 @@
                     ])
                 @endif
                 <p>Estos rubros son solo de este contrato. Se copian al crear una planilla. Eliminar quita el rubro de este contrato; las planillas que ya existen no cambian.</p>
+                <p>
+                    @if ($catalogoGeneral->isNotEmpty())
+                        <button type="button" class="secundario" id="usar-catalogo">Usar catálogo general ({{ $catalogoGeneral->count() }})</button>
+                    @endif
+                    <a href="{{ route('catalogo.edit') }}">Catálogo general</a>
+                </p>
+                @if ($catalogoGeneral->isNotEmpty())
+                    @php
+                        $catalogoJson = $catalogoGeneral->map(function ($rubro) {
+                            return [
+                                'descripcion' => $rubro->descripcion,
+                                'unidad' => $rubro->unidad,
+                                'cantidad_contratada' => $rubro->cantidad_contratada + 0,
+                                'precio_unitario' => $rubro->precio_unitario + 0,
+                            ];
+                        })->values();
+                    @endphp
+                    <script type="application/json" id="catalogo-general">@json($catalogoJson)</script>
+                @endif
                 @unless ($contrato->exists)
                     <p><label>Subir desde Excel<input type="file" name="rubros_excel" accept=".xlsx,.xls"></label></p>
                     <p>La primera fila puede decir Descripción, Unidad y Precio unitario.</p>
@@ -173,16 +192,48 @@
                     return coincidencia ? Number(coincidencia[1]) : -1;
                 });
                 let indice = Math.max(-1, ...indices) + 1;
-                document.getElementById('agregar-rubro').addEventListener('click', () => {
+                const agregarFila = () => {
                     const fila = document.getElementById('fila-nueva').content.cloneNode(true).querySelector('tr');
                     fila.querySelectorAll('[name]').forEach((campo) => {
                         campo.name = campo.name.replace('__i__', String(indice));
                     });
                     indice += 1;
-                    tbody.appendChild(fila);
+                    const ancla = tbody.querySelector('[data-nuevo]');
+                    if (ancla) tbody.insertBefore(fila, ancla);
+                    else tbody.appendChild(fila);
                     enlazar(fila);
-                    fila.querySelector('input')?.focus();
+                    return fila;
+                };
+                document.getElementById('agregar-rubro').addEventListener('click', () => {
+                    agregarFila().querySelector('input')?.focus();
                 });
+                const botonCatalogo = document.getElementById('usar-catalogo');
+                const datosCatalogo = document.getElementById('catalogo-general');
+                if (botonCatalogo && datosCatalogo) {
+                    botonCatalogo.addEventListener('click', () => {
+                        const normalizarTexto = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').trim();
+                        const existentes = new Set();
+                        tbody.querySelectorAll('[name$="[descripcion]"]').forEach((campo) => {
+                            const texto = normalizarTexto(campo.value);
+                            if (texto) existentes.add(texto);
+                        });
+                        let agregados = 0;
+                        JSON.parse(datosCatalogo.textContent).forEach((rubro) => {
+                            const texto = normalizarTexto(rubro.descripcion || '');
+                            if (!texto || existentes.has(texto)) return;
+                            existentes.add(texto);
+                            const fila = agregarFila();
+                            fila.removeAttribute('data-nuevo');
+                            fila.querySelector('[name$="[descripcion]"]').value = rubro.descripcion;
+                            fila.querySelector('[name$="[unidad]"]').value = rubro.unidad || '';
+                            fila.querySelector('[name$="[cantidad_contratada]"]').value = rubro.cantidad_contratada ?? '';
+                            fila.querySelector('[name$="[precio_unitario]"]').value = rubro.precio_unitario ?? '';
+                            fila.querySelector('.cant')?.dispatchEvent(new Event('input'));
+                            agregados += 1;
+                        });
+                        botonCatalogo.textContent = agregados > 0 ? 'Se agregaron ' + agregados + ' rubros' : 'Esos rubros ya están en el contrato';
+                    });
+                }
                 const buscar = document.querySelector('[data-buscar-rubros]');
                 const aviso = document.querySelector('[data-sin-rubros]');
                 const normalizar = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es');

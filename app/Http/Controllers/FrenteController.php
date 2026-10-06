@@ -26,7 +26,7 @@ class FrenteController extends Controller
         ]);
         Historial::sinRegistro(fn () => $catalogo->clonarDesdeAnterior($frente));
 
-        return redirect()->route('frentes.show', $frente)->with('estado', 'Frente creado. Aquí van sus rubros y cantidades.');
+        return redirect()->route('frentes.show', $frente)->with('estado', 'Planilla creada. Aquí van sus rubros y cantidades.');
     }
 
     public function show(Frente $frente, PlanillaCalculator $calculator)
@@ -96,7 +96,7 @@ class FrenteController extends Controller
         $contrato = $frente->contrato;
         $ultima = $contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->first();
         if (! $ultima || $ultima->id !== $frente->id) {
-            return back()->with('estado', 'Solo se puede eliminar el último frente.');
+            return back()->with('estado', 'Solo se puede eliminar la última planilla.');
         }
 
         $frente->delete();

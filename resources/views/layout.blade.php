@@ -133,6 +133,7 @@
             @endif
             @if (auth()->user()->esAdministrador())
                 <a class="btn" href="{{ route('usuarios.index') }}">Usuarios</a>
+                <a class="btn" href="{{ route('catalogo.edit') }}">Catálogo</a>
                 <a class="btn" href="{{ route('historial.general') }}">Historial</a>
                 <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
             @endif

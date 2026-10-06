@@ -34,4 +34,9 @@ class Empresa extends Model
     {
         return $this->hasMany(Contrato::class);
     }
+
+    public function catalogoRubros(): HasMany
+    {
+        return $this->hasMany(CatalogoRubro::class)->orderBy('numero');
+    }
 }

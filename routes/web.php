@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AnexoController;
+use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpresaController;
@@ -43,6 +44,9 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::put('/usuarios/{usuario}', [UsuarioController::class, 'update'])->name('usuarios.update');
         Route::delete('/usuarios/{usuario}', [UsuarioController::class, 'destroy'])->name('usuarios.destroy');
         Route::get('/historial', [HistorialController::class, 'general'])->name('historial.general');
+        Route::get('/catalogo', [CatalogoController::class, 'edit'])->name('catalogo.edit');
+        Route::put('/catalogo', [CatalogoController::class, 'update'])->name('catalogo.update');
+        Route::post('/catalogo/excel', [CatalogoController::class, 'excel'])->name('catalogo.excel');
 
         Route::get('/contratos/nuevo', [ContratoController::class, 'create'])->name('contratos.create');
         Route::post('/contratos', [ContratoController::class, 'store'])->name('contratos.store');

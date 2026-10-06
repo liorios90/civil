@@ -72,11 +72,11 @@
     </div>
     @if (auth()->user()->esAdministrador())
         <div class="card">
-            <h2>Nuevo frente</h2>
+            <h2>Nueva planilla</h2>
             <form method="post" action="{{ route('frentes.store', $contrato) }}" class="fila">
                 @csrf
-                <input name="nombre" value="{{ old('nombre', 'frente '.($contrato->frentes->count() + 1)) }}" required>
-                <button type="submit">Crear frente</button>
+                <input name="nombre" value="{{ old('nombre', 'planilla '.($contrato->frentes->count() + 1)) }}" required>
+                <button type="submit">Crear planilla</button>
             </form>
             @error('nombre')
                 <p>{{ $message }}</p>
@@ -84,8 +84,8 @@
         </div>
     @endif
     <div class="card">
-        <h2>Frentes generales</h2>
-        <p>Cada frente guarda sus rubros, cantidades y hojas de medición.</p>
+        <h2>Planillas</h2>
+        <p>Cada planilla guarda sus rubros, cantidades y hojas de medición.</p>
         <div class="opciones">
             @php($ultimoFrente = auth()->user()->esAdministrador() ? $contrato->frentes->sortBy([['orden', 'desc'], ['id', 'desc']])->first() : null)
             @forelse ($contrato->frentes as $frente)
@@ -95,7 +95,7 @@
                         <small>{{ $frente->rubros->count() }} rubros</small>
                     </a>
                     @if ($ultimoFrente && $frente->id === $ultimoFrente->id)
-                        <form method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar {{ $frente->nombre }} y sus cantidades? Solo se puede eliminar el último frente.')">
+                        <form method="post" action="{{ route('frentes.destroy', $frente) }}" onsubmit="return confirm('¿Eliminar {{ $frente->nombre }} y sus cantidades? Solo se puede eliminar la última planilla.')">
                             @csrf
                             @method('delete')
                             <button class="btn-rojo" type="submit">Eliminar</button>
@@ -103,7 +103,7 @@
                     @endif
                 </div>
             @empty
-                <p>Todavía no hay frentes. Crea el primero arriba.</p>
+                <p>Todavía no hay planillas. Crea la primera arriba.</p>
             @endforelse
         </div>
     </div>

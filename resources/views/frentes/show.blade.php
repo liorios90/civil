@@ -18,7 +18,7 @@
             <input name="nombre" value="{{ $frente->nombre }}" required>
             <button type="submit">Guardar nombre</button>
             @if ($esUltima)
-                <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar frente</button>
+                <button class="btn-rojo" type="submit" form="eliminar-frente">Eliminar planilla</button>
             @endif
         </form>
         @if ($esUltima)

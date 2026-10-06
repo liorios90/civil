@@ -10,7 +10,7 @@
         <div>
             <h1>Contratos</h1>
             @if (auth()->user()->esAdministrador())
-                <p>Al crear el contrato se definen los rubros. En el contrato se crean los frentes generales.</p>
+                <p>Al crear el contrato se definen los rubros. En el contrato se crean las planillas.</p>
             @else
                 <p>Estos son los contratos que le asignó el administrador.</p>
             @endif
@@ -34,12 +34,12 @@
             <div>
                 <h2><a href="{{ route('contratos.show', $contrato) }}">{{ $contrato->codigo_proceso }}</a></h2>
                 <p>{{ $contrato->objeto }}</p>
-                <p>{{ $contrato->contratista }} · {{ $contrato->frentes_count }} frentes</p>
+                <p>{{ $contrato->contratista }} · {{ $contrato->frentes_count }} {{ $contrato->frentes_count === 1 ? 'planilla' : 'planillas' }}</p>
             </div>
             @if (auth()->user()->esAdministrador())
                 <div class="acciones">
                     <a class="btn" href="{{ route('contratos.edit', $contrato) }}">Editar</a>
-                    <form method="post" action="{{ route('contratos.destroy', $contrato) }}" onsubmit="return confirm('¿Eliminar este contrato y sus frentes?')">
+                    <form method="post" action="{{ route('contratos.destroy', $contrato) }}" onsubmit="return confirm('¿Eliminar este contrato y sus planillas?')">
                         @csrf
                         @method('delete')
                         <button class="btn-rojo" type="submit">Eliminar</button>

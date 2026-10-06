@@ -4,7 +4,7 @@
 
 @section('contenido')
     <p>
-        <a href="{{ route('frentes.show', $ejecucion->rubro->frente) }}">Volver al frente</a>
+        <a href="{{ route('frentes.show', $ejecucion->rubro->frente) }}">Volver a la planilla</a>
         · <a href="{{ route('impresion.anexo', $ejecucion) }}" target="_blank">Imprimir hoja</a>
     </p>
     @if (session('estado'))

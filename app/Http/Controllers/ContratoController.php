@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AnexoImagen;
+use App\Models\CatalogoRubro;
 use App\Models\Contrato;
 use App\Models\Planilla;
 use App\Models\Rubro;
@@ -41,6 +42,7 @@ class ContratoController extends Controller
         return view('contratos.form', [
             'contrato' => new Contrato,
             'rubros' => collect(),
+            'catalogoGeneral' => $this->catalogoGeneral(),
             'editarRubros' => true,
         ]);
     }
@@ -57,7 +59,7 @@ class ContratoController extends Controller
         ]);
         $catalogo->aplicarCatalogo($contrato, $this->filasContrato($request), true);
 
-        return redirect()->route('contratos.show', $contrato)->with('estado', 'Contrato creado. Crea sus frentes generales.');
+        return redirect()->route('contratos.show', $contrato)->with('estado', 'Contrato creado. Crea sus planillas.');
     }
 
     public function show(Contrato $contrato)
@@ -151,6 +153,7 @@ class ContratoController extends Controller
         return view('contratos.form', [
             'contrato' => $contrato,
             'rubros' => $contrato->catalogo?->rubros ?? collect(),
+            'catalogoGeneral' => $this->catalogoGeneral(),
             'editarRubros' => true,
         ]);
     }
@@ -303,6 +306,19 @@ class ContratoController extends Controller
             'filas.*.precio_unitario' => ['nullable', 'numeric'],
             'filas.*.tipo_hoja' => ['nullable', 'in:valores,imagenes'],
         ])['filas'] ?? [];
+    }
+
+    private function catalogoGeneral(): Collection
+    {
+        $empresaId = (int) auth()->user()->empresa_id;
+        if ($empresaId < 1) {
+            return collect();
+        }
+
+        return CatalogoRubro::query()
+            ->where('empresa_id', $empresaId)
+            ->orderBy('numero')
+            ->get(['descripcion', 'unidad', 'cantidad_contratada', 'precio_unitario']);
     }
 
     private function rubrosEditables(Contrato $contrato): Collection
