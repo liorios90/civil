@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AnexoImagen;
 use App\Models\MedicionLinea;
 use App\Models\PlanillaRubro;
+use App\Services\HojaCalculo;
 use App\Services\PlanillaCalculator;
 use App\Services\UnidadMedicion;
 use Illuminate\Http\Request;
@@ -29,43 +30,54 @@ class AnexoController extends Controller
 
     public function guardar(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
-        $lineas = $request->validate([
-            'lineas' => ['nullable', 'array'],
-            'lineas.*.descripcion' => ['nullable', 'string', 'max:255'],
-            'lineas.*.base1' => ['nullable', 'numeric'],
-            'lineas.*.base2' => ['nullable', 'numeric'],
-            'lineas.*.altura' => ['nullable', 'numeric'],
-            'lineas.*.numero' => ['nullable', 'numeric'],
-            'lineas.*.longitud' => ['nullable', 'numeric'],
-            'lineas.*.area' => ['nullable', 'numeric'],
-            'lineas.*.volumen' => ['nullable', 'numeric'],
-            'lineas.*.total' => ['nullable', 'numeric'],
-            'lineas.*.manual_total' => ['nullable', 'in:0,1'],
-        ])['lineas'] ?? [];
+        $data = $request->validate([
+            'orden_columnas' => ['nullable', 'array', 'max:24'],
+            'orden_columnas.*' => ['required', 'string', 'max:31'],
+            'etiquetas' => ['nullable', 'array'],
+            'etiquetas.*' => ['nullable', 'string', 'max:40'],
+            'lineas' => ['nullable', 'array', 'max:200'],
+            'lineas.*.celdas' => ['nullable', 'array'],
+            'lineas.*.celdas.*' => ['nullable', 'string', 'max:500'],
+        ]);
 
         $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
+        $columnas = HojaCalculo::normalizar($data['orden_columnas'] ?? null, $data['etiquetas'] ?? [], $tipo);
+        $claves = array_column($columnas, 'clave');
+        $crudas = [];
+        foreach ($data['lineas'] ?? [] as $linea) {
+            $fila = [];
+            foreach ($claves as $clave) {
+                $fila[$clave] = trim((string) ($linea['celdas'][$clave] ?? ''));
+            }
+            $crudas[] = $fila;
+        }
+        $ultimo = -1;
+        foreach ($crudas as $indice => $fila) {
+            foreach ($fila as $texto) {
+                if ($texto !== '') {
+                    $ultimo = $indice;
+                    break;
+                }
+            }
+        }
+        $crudas = array_slice($crudas, 0, $ultimo + 1);
+        $resueltas = HojaCalculo::resolver($crudas, $columnas, $tipo);
+
         $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
+        $anexo->update(['columnas' => $columnas]);
         $existentes = $anexo->lineas()->get()->values();
         $orden = 1;
 
-        foreach ($lineas as $linea) {
-            $calculada = $this->subtotales($linea, $tipo);
-            $descripcion = trim((string) ($linea['descripcion'] ?? ''));
-            if ($descripcion === '' && $calculada['total'] == 0.0) {
-                continue;
-            }
+        foreach ($resueltas as $resuelta) {
             $valores = [
                 'orden' => $orden,
-                'descripcion' => $descripcion !== '' ? $descripcion : null,
-                'base1' => $linea['base1'] ?? null,
-                'base2' => $linea['base2'] ?? null,
-                'altura' => $linea['altura'] ?? null,
-                'numero' => $linea['numero'] ?? null,
-                'longitud' => $calculada['longitud'],
-                'area' => $calculada['area'],
-                'volumen' => $calculada['volumen'],
-                'total' => $calculada['total'],
+                'descripcion' => $resuelta['descripcion'] !== '' ? $resuelta['descripcion'] : null,
+                'celdas' => $resuelta['celdas'] !== [] ? $resuelta['celdas'] : null,
+                'total' => $resuelta['numeros']['total'] ?? 0,
             ];
+            foreach (['base1', 'base2', 'altura', 'numero', 'longitud', 'area', 'volumen'] as $campo) {
+                $valores[$campo] = $resuelta['numeros'][$campo] ?? null;
+            }
             $actual = $existentes->get($orden - 1);
             if ($actual) {
                 $actual->setRelation('anexo', $anexo)->fill($valores)->save();

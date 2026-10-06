@@ -25,6 +25,9 @@
         <tr><td><b>Obra:</b> {{ $rubro->frente->nombre }}</td><td><b>Código:</b> {{ $c->codigo_proceso }}</td></tr>
         <tr><td><b>Contratista:</b> {{ $c->contratista }}</td><td><b>Fiscalizador:</b> {{ $c->fiscalizador }}</td></tr>
         <tr><td colspan="2"><b>Rubro:</b> {{ $rubro->descripcion }} &nbsp; <b>Unidad:</b> {{ $rubro->unidad }}</td></tr>
+        @php
+            $hoja = \App\Services\HojaCalculo::presentar($anexo, \App\Services\UnidadMedicion::tipo($rubro->unidad));
+        @endphp
         <tr><td colspan="2">{{ \App\Services\UnidadMedicion::explica(\App\Services\UnidadMedicion::tipo($rubro->unidad)) }}</td></tr>
     </table>
 
@@ -39,32 +42,21 @@
         <table>
             <thead>
                 <tr>
-                    <th rowspan="2">Descripción</th>
-                    <th colspan="4">Dimensiones</th>
-                    <th colspan="3">Subtotales</th>
-                    <th rowspan="2">Total</th>
-                </tr>
-                <tr>
-                    <th>Base 1</th><th>Base 2</th><th>Altura</th><th>{{ \App\Services\UnidadMedicion::tipo($rubro->unidad) === 'm3km' ? 'Km' : 'Número' }}</th>
-                    <th>Longitud</th><th>Área</th><th>Volumen</th>
+                    @foreach ($hoja['columnas'] as $columna)
+                        <th>{{ $columna['etiqueta'] }}</th>
+                    @endforeach
                 </tr>
             </thead>
             <tbody>
-                @foreach ($anexo->lineas as $linea)
+                @foreach ($hoja['filas'] as $fila)
                     <tr>
-                        <td>{{ $linea->descripcion }}</td>
-                        <td class="n">{{ $q($linea->base1) }}</td>
-                        <td class="n">{{ $q($linea->base2) }}</td>
-                        <td class="n">{{ $q($linea->altura) }}</td>
-                        <td class="n">{{ $q($linea->numero) }}</td>
-                        <td class="n">{{ $q($linea->longitud) }}</td>
-                        <td class="n">{{ $q($linea->area) }}</td>
-                        <td class="n">{{ $q($linea->volumen) }}</td>
-                        <td class="n">{{ $q($linea->total) }}</td>
+                        @foreach ($hoja['columnas'] as $columna)
+                            <td class="{{ $columna['clave'] === 'descripcion' ? '' : 'n' }}">{{ $fila[$columna['clave']] }}</td>
+                        @endforeach
                     </tr>
                 @endforeach
-                @for ($i = $anexo->lineas->count(); $i < 12; $i++)
-                    <tr>@for ($columna = 0; $columna < 9; $columna++)<td>&nbsp;</td>@endfor</tr>
+                @for ($i = count($hoja['filas']); $i < 8; $i++)
+                    <tr>@foreach ($hoja['columnas'] as $columna)<td>&nbsp;</td>@endforeach</tr>
                 @endfor
             </tbody>
         </table>

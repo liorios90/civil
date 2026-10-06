@@ -27,7 +27,7 @@ class MedicionLinea extends Model
     }
     protected $fillable = [
         'anexo_id', 'orden', 'descripcion', 'base1', 'base2', 'altura', 'numero',
-        'longitud', 'area', 'volumen', 'total',
+        'longitud', 'area', 'volumen', 'total', 'celdas',
     ];
 
     protected function casts(): array
@@ -41,6 +41,7 @@ class MedicionLinea extends Model
             'area' => 'decimal:4',
             'volumen' => 'decimal:4',
             'total' => 'decimal:4',
+            'celdas' => 'array',
         ];
     }
 

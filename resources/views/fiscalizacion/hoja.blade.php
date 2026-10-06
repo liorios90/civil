@@ -42,32 +42,23 @@
         @if (! $anexo || $anexo->lineas->isEmpty())
             <p class="muted">No hay mediciones cargadas.</p>
         @else
+            @php
+                $hoja = \App\Services\HojaCalculo::presentar($anexo, \App\Services\UnidadMedicion::tipo($rubro->unidad));
+            @endphp
             <table>
                 <thead>
                     <tr>
-                        <th>Descripción</th>
-                        <th>Base 1</th>
-                        <th>Base 2</th>
-                        <th>Altura</th>
-                        <th>{{ \App\Services\UnidadMedicion::tipo($rubro->unidad) === 'm3km' ? 'Km' : 'Número' }}</th>
-                        <th>Longitud</th>
-                        <th>Área</th>
-                        <th>Volumen</th>
-                        <th>Total</th>
+                        @foreach ($hoja['columnas'] as $columna)
+                            <th>{{ $columna['etiqueta'] }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($anexo->lineas as $linea)
+                    @foreach ($hoja['filas'] as $fila)
                         <tr>
-                            <td>{{ $linea->descripcion }}</td>
-                            <td class="n">{{ $q($linea->base1) }}</td>
-                            <td class="n">{{ $q($linea->base2) }}</td>
-                            <td class="n">{{ $q($linea->altura) }}</td>
-                            <td class="n">{{ $q($linea->numero) }}</td>
-                            <td class="n">{{ $q($linea->longitud) }}</td>
-                            <td class="n">{{ $q($linea->area) }}</td>
-                            <td class="n">{{ $q($linea->volumen) }}</td>
-                            <td class="n">{{ $q($linea->total) }}</td>
+                            @foreach ($hoja['columnas'] as $columna)
+                                <td class="{{ $columna['clave'] === 'descripcion' ? '' : 'n' }}">{{ $fila[$columna['clave']] }}</td>
+                            @endforeach
                         </tr>
                     @endforeach
                 </tbody>

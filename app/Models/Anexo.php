@@ -8,7 +8,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Anexo extends Model
 {
-    protected $fillable = ['planilla_rubro_id', 'tipo', 'hoja'];
+    protected $fillable = ['planilla_rubro_id', 'tipo', 'hoja', 'columnas'];
+
+    protected function casts(): array
+    {
+        return [
+            'columnas' => 'array',
+        ];
+    }
 
     public function planillaRubro(): BelongsTo
     {
