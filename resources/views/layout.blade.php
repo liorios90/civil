@@ -9,9 +9,10 @@
         :root { color-scheme: light; }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: "Segoe UI", sans-serif; background: #f4f6f8; color: #1c2430; }
-        header { background: #0f3d68; color: #fff; padding: 16px 24px; position: sticky; top: 0; z-index: 40; }
+        header { background: #0f3d68; color: #fff; padding: 14px 24px; position: sticky; top: 0; z-index: 40; }
         header a { color: #fff; text-decoration: none; }
-        header small { display: block; clear: both; opacity: .8; margin-top: 4px; }
+        header .marca { display: inline-block; font-weight: 700; letter-spacing: .01em; margin-right: 16px; padding: 8px 0; }
+        header small { display: block; clear: both; opacity: .8; margin-top: 8px; }
         main { padding: 24px; }
         .card { background: #fff; border: 1px solid #d9e0e7; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
@@ -32,8 +33,30 @@
         input[type="checkbox"] { width: auto; }
         label.check { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 8px 0; }
         .cabecera-acciones { float: right; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; max-width: 100%; }
-        .cabecera-acciones .btn, .cabecera-acciones button { flex: none; white-space: nowrap; }
         .cabecera-acciones form { margin: 0; }
+        .menu-nav { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .menu-nav .btn-menu {
+            flex: none;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,.28);
+            background: rgba(255,255,255,.1);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+            text-decoration: none;
+            transition: background .15s ease, border-color .15s ease, transform .15s ease;
+        }
+        .menu-nav .btn-menu:hover { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.55); }
+        .menu-nav .btn-menu.activo { background: #fff; color: #0f3d68; border-color: #fff; }
+        .menu-nav .btn-menu.salir { background: transparent; border-color: rgba(255,255,255,.4); font-weight: 500; }
+        .menu-nav .btn-menu.salir:hover { background: rgba(155,28,28,.25); border-color: #f3b4b4; }
+        .menu-nav .btn-menu .aviso { margin-left: 2px; }
         .alerta { background: #fff4e5; border: 1px solid #f0d3a2; padding: 10px 12px; border-radius: 8px; margin-bottom: 16px; }
         .buscar { margin: 0 0 10px; }
         .buscar input { max-width: 420px; }
@@ -65,8 +88,9 @@
         .estado-planilla.aprobada { background: #e5f4e4; color: #1d6b32; }
         .aviso { display: inline-flex; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: #25d366; color: #fff; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; }
         .aviso[hidden] { display: none; }
-        header a .aviso, .chat-lista h1 .aviso { color: #fff; margin-left: 6px; vertical-align: middle; }
-        body.aplicacion header a .aviso { min-width: 22px; height: 22px; font-size: 13px; }
+        .chat-lista h1 .aviso { color: #fff; margin-left: 6px; vertical-align: middle; }
+        .menu-nav .btn-menu.activo .aviso { background: #0f3d68; }
+        body.aplicacion .menu-nav .btn-menu .aviso { min-width: 22px; height: 22px; font-size: 13px; }
         @media (max-width: 800px) { .tablero { grid-template-columns: 1fr 1fr; } }
         .fila { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
         .opciones { display: grid; gap: 8px; }
@@ -103,7 +127,10 @@
         body.aplicacion header .btn { float: none; display: inline-block; }
         @media (max-width: 800px) {
             header { padding: 12px 14px; }
-            .cabecera-acciones { float: none; clear: both; width: 100%; margin-top: 10px; justify-content: flex-start; }
+            header .marca { display: block; margin: 0 0 8px; }
+            .cabecera-acciones { float: none; clear: both; width: 100%; margin-top: 4px; justify-content: flex-start; }
+            .menu-nav { width: 100%; }
+            .menu-nav .btn-menu { padding: 8px 12px; }
             header small { margin-top: 8px; }
         }
         body.aplicacion .fila { flex-wrap: wrap; }
@@ -125,24 +152,25 @@
 </head>
 <body @class(['aplicacion' => str_contains((string) request()->userAgent(), 'PlanillasApp'), 'pagina-mensajes' => request()->routeIs('mensajes.*')])>
 <header>
-    <a href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
+    <a class="marca" href="{{ route('inicio') }}">Planillas de liquidación de obra</a>
     @auth
-        <div class="cabecera-acciones">
-            @if (auth()->user()->esAdministrador() || auth()->user()->esUsuario())
-                <a class="btn" href="{{ route('mensajes.index') }}">Mensajes<span class="aviso" id="avisos-mensajes" @if ($sinLeerMensajes < 1) hidden @endif>{{ $sinLeerMensajes > 99 ? '99+' : $sinLeerMensajes }}</span></a>
-            @endif
+        <div class="cabecera-acciones menu-nav">
             @if (auth()->user()->esAdministrador())
-                <a class="btn" href="{{ route('usuarios.index') }}">Usuarios</a>
-                <a class="btn" href="{{ route('catalogo.edit') }}">Catálogo</a>
-                <a class="btn" href="{{ route('historial.general') }}">Historial</a>
-                <a class="btn" href="{{ route('contratos.create') }}">Nuevo contrato</a>
-            @endif
-            @if (auth()->user()->esSistemas())
-                <a class="btn" href="{{ route('empresas.create') }}">Nueva empresa</a>
+                <a class="btn-menu @if (request()->routeIs('inicio')) activo @endif" href="{{ route('inicio') }}">Menú principal</a>
+                <a class="btn-menu @if (request()->routeIs('catalogo.*')) activo @endif" href="{{ route('catalogo.edit') }}">Catálogo</a>
+                <a class="btn-menu @if (request()->routeIs('contratos.create')) activo @endif" href="{{ route('contratos.create') }}">Nuevo contrato</a>
+                <a class="btn-menu @if (request()->routeIs('usuarios.*')) activo @endif" href="{{ route('usuarios.index') }}">Usuarios</a>
+                <a class="btn-menu @if (request()->routeIs('historial.general')) activo @endif" href="{{ route('historial.general') }}">Historial</a>
+                <a class="btn-menu @if (request()->routeIs('mensajes.*')) activo @endif" href="{{ route('mensajes.index') }}">Mensajes<span class="aviso" id="avisos-mensajes" @if ($sinLeerMensajes < 1) hidden @endif>{{ $sinLeerMensajes > 99 ? '99+' : $sinLeerMensajes }}</span></a>
+            @elseif (auth()->user()->esUsuario())
+                <a class="btn-menu @if (request()->routeIs('inicio')) activo @endif" href="{{ route('inicio') }}">Menú principal</a>
+                <a class="btn-menu @if (request()->routeIs('mensajes.*')) activo @endif" href="{{ route('mensajes.index') }}">Mensajes<span class="aviso" id="avisos-mensajes" @if ($sinLeerMensajes < 1) hidden @endif>{{ $sinLeerMensajes > 99 ? '99+' : $sinLeerMensajes }}</span></a>
+            @elseif (auth()->user()->esSistemas())
+                <a class="btn-menu @if (request()->routeIs('empresas.*')) activo @endif" href="{{ route('empresas.create') }}">Nueva empresa</a>
             @endif
             <form method="post" action="{{ route('salir') }}">
                 @csrf
-                <button class="secundario" type="submit">Salir</button>
+                <button class="btn-menu salir" type="submit">Salir</button>
             </form>
         </div>
         <small>{{ auth()->user()->esSistemas() ? 'Sistemas' : (auth()->user()->empresa->nombre ?? 'Usuario') }} · {{ auth()->user()->name }}</small>
