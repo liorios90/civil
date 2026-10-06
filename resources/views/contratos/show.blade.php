@@ -21,7 +21,9 @@
                 <a class="btn" href="{{ route('impresion.excel', $planilla) }}">Exportar Excel</a>
                 <a class="btn" href="{{ route('avance.comparacion', $planilla) }}">Comparar avance</a>
             @endif
-            <a class="btn" href="{{ route('historial.index', $contrato) }}">Historial</a>
+            @if (auth()->user()->esAdministrador())
+                <a class="btn" href="{{ route('historial.index', $contrato) }}">Historial</a>
+            @endif
         </div>
     </div>
     @if ($planilla && $contrato->planillas->count() > 1)

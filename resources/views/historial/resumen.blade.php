@@ -1,3 +1,4 @@
+@if (auth()->user()?->esAdministrador())
 @php
     $ultimo = \App\Models\HistorialCambio::query()
         ->with('usuario')
@@ -16,3 +17,4 @@
     @endif
     <a href="{{ $enlace }}">Historial de cambios</a>
 </p>
+@endif
