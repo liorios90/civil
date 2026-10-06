@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Frente;
 use App\Models\Rubro;
+use App\Services\FrenteRubros;
 use App\Services\PlanillaCalculator;
 use Illuminate\Http\Request;
 
@@ -59,8 +60,9 @@ class RubroController extends Controller
                 ]);
                 $rubro = $existente;
             } else {
-                $numero = (int) $frente->rubros()->max('numero') + 1;
-                $rubro = $frente->rubros()->create($datos + ['numero' => $numero]);
+                $catalogo = app(FrenteRubros::class);
+                $rubro = $frente->rubros()->create($datos + ['numero' => $catalogo->siguienteNumero($frente)]);
+                $catalogo->reflejarNuevo($rubro);
             }
 
             $this->guardarCantidades($frente, $rubro);
@@ -72,15 +74,16 @@ class RubroController extends Controller
     public function store(Request $request, Frente $frente)
     {
         $data = $this->datos($request);
-        $numero = (int) $frente->rubros()->max('numero') + 1;
+        $catalogo = app(FrenteRubros::class);
         $rubro = $frente->rubros()->create([
-            'numero' => $numero,
+            'numero' => $catalogo->siguienteNumero($frente),
             'descripcion' => $data['descripcion'],
             'unidad' => $data['unidad'],
             'cantidad_contratada' => round((float) $data['cantidad_contratada'], 2),
             'precio_unitario' => round((float) $data['precio_unitario'], 2),
         ]);
 
+        $catalogo->reflejarNuevo($rubro);
         $this->guardarCantidades($frente, $rubro);
 
         return redirect()->route('frentes.show', $frente);

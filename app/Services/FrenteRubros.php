@@ -328,23 +328,29 @@ class FrenteRubros
 
     public function reflejarNuevo(Rubro $rubro): void
     {
-        $planilla = $rubro->frente->contrato->planillas()->latest('id')->first();
+        $contrato = $rubro->frente->contrato;
+        $planilla = $contrato->planillas()->latest('id')->first();
+        $datos = [
+            'codigo' => $rubro->codigo,
+            'descripcion' => $rubro->descripcion,
+            'unidad' => $rubro->unidad,
+            'cantidad_contratada' => $rubro->cantidad_contratada,
+            'precio_unitario' => $rubro->precio_unitario,
+            'medicion' => $rubro->medicion,
+            'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
+        ];
+
+        $this->asegurarCatalogo($contrato)->rubros()->updateOrCreate(
+            ['numero' => $rubro->numero],
+            $datos,
+        );
 
         foreach ($this->otrosFrentes($rubro->frente) as $frente) {
             if ($frente->rubros()->where('numero', $rubro->numero)->exists()) {
                 continue;
             }
 
-            $copia = $frente->rubros()->create([
-                'numero' => $rubro->numero,
-                'codigo' => $rubro->codigo,
-                'descripcion' => $rubro->descripcion,
-                'unidad' => $rubro->unidad,
-                'cantidad_contratada' => $rubro->cantidad_contratada,
-                'precio_unitario' => $rubro->precio_unitario,
-                'medicion' => $rubro->medicion,
-                'tipo_hoja' => $rubro->tipo_hoja ?: 'valores',
-            ]);
+            $copia = $frente->rubros()->create($datos + ['numero' => $rubro->numero]);
 
             if ($planilla) {
                 $planilla->ejecuciones()->firstOrCreate(

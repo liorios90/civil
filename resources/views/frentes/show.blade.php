@@ -9,6 +9,7 @@
     @endif
     @php
         $gestiona = auth()->user()->esAdministrador();
+        $puedeAgregar = $gestiona || auth()->user()->esUsuario();
         $esUltima = $gestiona && $frente->contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->value('id') === $frente->id;
     @endphp
     @if ($gestiona)
@@ -92,7 +93,7 @@
                 @empty
                     <p class="vacia">Esta planilla no tiene rubros. Agrega uno abajo.</p>
                 @endforelse
-                @if ($gestiona)
+                @if ($puedeAgregar)
                 @for ($n = 0; $n < 1; $n++)
                     @php $i = count($lineas) + $n; @endphp
                     <article class="ficha" data-fila data-nuevo>
@@ -204,7 +205,7 @@
                         @empty
                             <tr class="vacia"><td colspan="13">Esta planilla no tiene rubros. Agrega uno abajo.</td></tr>
                         @endforelse
-                        @if ($gestiona)
+                        @if ($puedeAgregar)
                         @for ($n = 0; $n < 3; $n++)
                             @php $i = count($lineas) + $n; @endphp
                             <tr data-fila data-nuevo>
@@ -241,7 +242,7 @@
         </div>
         @endif
         <div class="barra">
-            @if ($gestiona)
+            @if ($puedeAgregar)
                 <button type="button" class="secundario" id="agregar-rubro">Agregar rubro</button>
             @endif
             <button type="submit">Guardar</button>
