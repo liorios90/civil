@@ -180,5 +180,8 @@
         @endforelse
     </div>
 
-    <script src="{{ asset('js/hoja-calculo.js') }}?v={{ filemtime(public_path('js/hoja-calculo.js')) }}"></script>
+    @php($hojaJs = public_path('js/hoja-calculo.js'))
+    @if (is_file($hojaJs))
+        <script src="{{ asset('js/hoja-calculo.js') }}?v={{ filemtime($hojaJs) }}"></script>
+    @endif
 @endsection
