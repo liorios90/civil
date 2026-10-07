@@ -32,6 +32,7 @@
                 <label>Inicio<input type="date" name="fecha_inicio" value="{{ old('fecha_inicio', optional($contrato->fecha_inicio)->format('Y-m-d')) }}"></label>
                 <label>Término<input type="date" name="fecha_termino" value="{{ old('fecha_termino', optional($contrato->fecha_termino)->format('Y-m-d')) }}"></label>
                 <label>Monto sin IVA<input type="number" step="0.01" name="monto_contrato" value="{{ old('monto_contrato', $contrato->monto_contrato ?? 0) }}"></label>
+                <label>IVA (%)<input type="number" step="0.01" min="0" max="100" name="iva_porcentaje" value="{{ old('iva_porcentaje', $contrato->iva_porcentaje ?? 15) }}" required><small style="color:#4a5b6d;margin-top:2px">Se usa al imprimir la planilla. Por defecto 15.</small></label>
                 <label>Anticipo (0.50 = 50 %)<input type="number" step="0.01" name="porcentaje_anticipo" value="{{ old('porcentaje_anticipo', $contrato->porcentaje_anticipo ?? 0) }}"></label>
             </div>
             @if ($editarRubros)

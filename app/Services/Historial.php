@@ -57,6 +57,7 @@ class Historial
             'plazo' => 'Plazo',
             'monto_contrato' => 'Monto sin IVA',
             'monto_contrato_iva' => 'Monto con IVA',
+            'iva_porcentaje' => 'IVA %',
             'porcentaje_anticipo' => 'Anticipo %',
             'anticipo' => 'Anticipo',
             'nombre' => 'Nombre',
@@ -78,7 +79,6 @@ class Historial
             'periodo_desde' => 'Período desde',
             'periodo_hasta' => 'Período hasta',
             'estado' => 'Estado',
-            'iva_porcentaje' => 'IVA %',
             'descuentos' => 'Descuentos',
             'multas' => 'Multas',
         ][$campo] ?? $campo;

@@ -51,7 +51,7 @@ class PlanillaImporter
                 'periodo_desde' => $this->fecha($cabecera['M8'] ?? null),
                 'periodo_hasta' => $this->fecha($cabecera['M9'] ?? null),
                 'estado' => 'borrador',
-                'iva_porcentaje' => 12,
+                'iva_porcentaje' => 15,
             ]);
 
             $frente = null;

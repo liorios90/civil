@@ -29,7 +29,7 @@ class Contrato extends Model
         'empresa_id', 'entidad', 'numero_contrato', 'codigo_proceso', 'objeto',
         'fecha_suscripcion', 'fecha_inicio', 'fecha_termino',
         'ubicacion', 'provincia', 'contratista', 'fiscalizador',
-        'administrador', 'plazo', 'monto_contrato', 'monto_contrato_iva',
+        'administrador', 'plazo', 'monto_contrato', 'monto_contrato_iva', 'iva_porcentaje',
         'porcentaje_anticipo', 'anticipo', 'enlace_fiscalizador',
     ];
 
@@ -41,6 +41,7 @@ class Contrato extends Model
             'fecha_termino' => 'date',
             'monto_contrato' => 'decimal:2',
             'monto_contrato_iva' => 'decimal:2',
+            'iva_porcentaje' => 'decimal:2',
             'porcentaje_anticipo' => 'decimal:4',
             'anticipo' => 'decimal:2',
         ];
