@@ -435,6 +435,51 @@
 
     const formulaEnFila = (formula, fila) => formula.replace(/([A-Za-z]+)1(?!\d)/g, (_, letras) => letras + String(fila));
 
+    const normalizarFormula = (texto) => {
+        let nueva = String(texto || '').trim();
+        if (nueva !== '' && !nueva.startsWith('=')) nueva = '=' + nueva;
+        return nueva;
+    };
+
+    const actualizarVistaFormula = (th) => {
+        if (!th) return;
+        const formula = th.querySelector('.formula-col');
+        let vista = th.querySelector('.formula-vista');
+        if (!formula) return;
+        if (!vista) {
+            vista = document.createElement('span');
+            vista.className = 'formula-vista';
+            formula.after(vista);
+        }
+        vista.textContent = formula.value || '';
+    };
+
+    const aplicarFormulaColumna = (tabla, th, nueva, anterior) => {
+        nueva = normalizarFormula(nueva);
+        anterior = normalizarFormula(anterior ?? (th.dataset.formula || ''));
+        th.dataset.formula = nueva;
+        const formula = th.querySelector('.formula-col');
+        if (formula) {
+            formula.value = nueva;
+            formula.dataset.anterior = nueva;
+        }
+        actualizarVistaFormula(th);
+        const clave = th.dataset.clave;
+        [...tabla.tBodies[0].rows].forEach((tr, indice) => {
+            const celda = tr.querySelector('td[data-clave="' + clave + '"] .celda');
+            if (!celda || celda.dataset.texto) return;
+            const raw = celda.dataset.raw || '';
+            const esperada = anterior ? formulaEnFila(anterior, indice + 1) : '';
+            if (raw !== '' && raw !== esperada) return;
+            const siguiente = nueva ? formulaEnFila(nueva, indice + 1) : '';
+            celda.dataset.raw = siguiente;
+            const hidden = celda.parentElement.querySelector('.crudo');
+            if (hidden) hidden.value = siguiente;
+            if (document.activeElement !== celda) celda.value = siguiente;
+        });
+        recalcular(tabla, true);
+    };
+
     const crearCelda = (clave, indice, formula) => {
         const td = document.createElement('td');
         td.dataset.clave = clave;
@@ -477,7 +522,11 @@
             formula.placeholder = 'Fórmula';
             formula.maxLength = 200;
             formula.autocomplete = 'off';
-            th.append(formula);
+            formula.tabIndex = -1;
+            formula.setAttribute('aria-hidden', 'true');
+            const vista = document.createElement('span');
+            vista.className = 'formula-vista';
+            th.append(formula, vista);
         }
         if (clave !== 'total' && clave !== 'descripcion') {
             const quitar = document.createElement('button');
@@ -510,50 +559,18 @@
             if (hidden) hidden.value = input.value;
             if (!input.dataset.texto) recalcular(tabla, true);
         });
-        const aplicarFormulaColumna = (input) => {
-            const th = input.closest('th');
-            if (!th) return;
-            let nueva = input.value.trim();
-            if (nueva !== '' && !nueva.startsWith('=')) nueva = '=' + nueva;
-            input.value = nueva;
-            const anterior = input.dataset.anterior ?? (th.dataset.formula || '');
-            th.dataset.formula = nueva;
-            const clave = th.dataset.clave;
-            [...tabla.tBodies[0].rows].forEach((tr, indice) => {
-                const celda = tr.querySelector('td[data-clave="' + clave + '"] .celda');
-                if (!celda || celda.dataset.texto) return;
-                const raw = celda.dataset.raw || '';
-                const esperada = anterior ? formulaEnFila(anterior, indice + 1) : '';
-                if (raw !== '' && raw !== esperada) return;
-                const siguiente = nueva ? formulaEnFila(nueva, indice + 1) : '';
-                celda.dataset.raw = siguiente;
-                const hidden = celda.parentElement.querySelector('.crudo');
-                if (hidden) hidden.value = siguiente;
-                if (document.activeElement !== celda) celda.value = siguiente;
-            });
-            input.dataset.anterior = nueva;
-            recalcular(tabla, true);
-        };
         tabla.addEventListener('focusin', (evento) => {
             const input = evento.target;
-            if (input.classList && input.classList.contains('formula-col')) {
-                input.dataset.anterior = input.closest('th')?.dataset.formula || input.value.trim();
-                input.select();
-                return;
-            }
             if (!input.classList || !input.classList.contains('celda')) return;
             if (input.dataset.raw) input.value = input.dataset.raw;
             input.select();
         });
         tabla.addEventListener('focusout', (evento) => {
             const input = evento.target;
-            if (input.classList && input.classList.contains('formula-col')) {
-                aplicarFormulaColumna(input);
-                return;
-            }
             if (!input.classList || !input.classList.contains('celda') || input.dataset.texto) return;
             recalcular(tabla, true);
         });
+        tabla.querySelectorAll('thead th').forEach(actualizarVistaFormula);
         tabla.addEventListener('click', (evento) => {
             const boton = evento.target.closest('.quitar-col');
             if (!boton || !tabla.contains(boton)) return;
@@ -599,7 +616,7 @@
         tabla.addEventListener('keydown', (evento) => {
             const campo = evento.target;
             if (!(campo instanceof HTMLInputElement)) return;
-            if ((campo.classList.contains('etiqueta') || campo.classList.contains('formula-col')) && evento.key === 'Enter') {
+            if (campo.classList.contains('etiqueta') && evento.key === 'Enter') {
                 evento.preventDefault();
                 campo.blur();
                 return;
@@ -666,4 +683,165 @@
     };
 
     document.querySelectorAll('table[data-hoja]').forEach(iniciar);
+
+    const modalFormulas = document.getElementById('modal-formulas');
+    const listaFormulas = modalFormulas?.querySelector('[data-lista-formulas]');
+    let tablaFormulas = null;
+
+    const columnasEditables = (tabla) => [...tabla.querySelectorAll('thead th')].filter((th) => {
+        const clave = th.dataset.clave;
+        return clave && clave !== 'descripcion';
+    });
+
+    const insertarEnCampo = (campo, texto) => {
+        const inicio = campo.selectionStart ?? campo.value.length;
+        const fin = campo.selectionEnd ?? campo.value.length;
+        const antes = campo.value.slice(0, inicio);
+        const despues = campo.value.slice(fin);
+        const necesitaIgual = antes.trim() === '' && !texto.startsWith('=');
+        const pieza = (necesitaIgual ? '=' : '') + texto;
+        campo.value = antes + pieza + despues;
+        const cursor = (antes + pieza).length;
+        campo.focus();
+        campo.setSelectionRange(cursor, cursor);
+    };
+
+    const armarChips = (bloque, campo, columnas, propia) => {
+        const chips = document.createElement('div');
+        chips.className = 'chips';
+        columnas.forEach((col) => {
+            if (col.clave === propia) return;
+            const nombre = col.etiqueta || col.clave;
+            if (!nombre || nombre.startsWith('=')) return;
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.textContent = nombre;
+            boton.title = 'Insertar ' + nombre;
+            boton.addEventListener('click', () => insertarEnCampo(campo, nombre));
+            chips.append(boton);
+        });
+        ['+', '-', '*', '/', '(', ')'].forEach((op) => {
+            const boton = document.createElement('button');
+            boton.type = 'button';
+            boton.className = 'op';
+            boton.textContent = op;
+            boton.addEventListener('click', () => insertarEnCampo(campo, op));
+            chips.append(boton);
+        });
+        const limpia = document.createElement('button');
+        limpia.type = 'button';
+        limpia.className = 'fn';
+        limpia.textContent = 'Borrar';
+        limpia.addEventListener('click', () => {
+            campo.value = '';
+            campo.focus();
+        });
+        chips.append(limpia);
+        bloque.append(chips);
+    };
+
+    const abrirModalFormulas = (tabla) => {
+        if (!modalFormulas || !listaFormulas) return;
+        tablaFormulas = tabla;
+        const columnas = columnasEditables(tabla).map((th, indice) => ({
+            th,
+            clave: th.dataset.clave,
+            etiqueta: th.querySelector('.etiqueta')?.value || th.dataset.clave,
+            formula: th.querySelector('.formula-col')?.value || th.dataset.formula || '',
+            letra: letra(indice + (tabla.querySelector('th[data-clave="descripcion"]') ? 1 : 0)),
+        }));
+        // Recalculate letters from full header order
+        const todas = [...tabla.querySelectorAll('thead th')].filter((th) => th.dataset.clave);
+        columnas.forEach((col) => {
+            const indice = todas.findIndex((th) => th.dataset.clave === col.clave);
+            col.letra = letra(indice);
+        });
+
+        listaFormulas.innerHTML = '';
+        columnas.forEach((col) => {
+            const bloque = document.createElement('div');
+            bloque.className = 'dato-formula';
+            bloque.dataset.clave = col.clave;
+
+            const tope = document.createElement('div');
+            tope.className = 'dato-tope';
+            const titulo = document.createElement('strong');
+            titulo.textContent = col.etiqueta;
+            const marca = document.createElement('span');
+            marca.className = 'letra-chip';
+            marca.textContent = col.letra;
+            tope.append(titulo, marca);
+
+            const campoWrap = document.createElement('div');
+            campoWrap.className = 'campo-formula';
+            const label = document.createElement('label');
+            label.textContent = col.clave === 'total'
+                ? 'Fórmula del total (cantidad a facturar)'
+                : 'Fórmula (deje vacío si se escribe a mano)';
+            const campo = document.createElement('input');
+            campo.type = 'text';
+            campo.maxLength = 200;
+            campo.autocomplete = 'off';
+            campo.placeholder = '=altura*peso';
+            campo.value = col.formula;
+            campo.dataset.clave = col.clave;
+            campoWrap.append(label, campo);
+
+            const ayuda = document.createElement('p');
+            ayuda.className = 'ayuda-formula';
+            ayuda.textContent = 'Toque un nombre o un signo para armar la fórmula. Ejemplo: =altura*peso';
+
+            bloque.append(tope, campoWrap);
+            armarChips(bloque, campo, columnas.map((c) => ({ clave: c.clave, etiqueta: c.etiqueta })), col.clave);
+            bloque.append(ayuda);
+
+            campo.addEventListener('focus', () => {
+                listaFormulas.querySelectorAll('.dato-formula').forEach((el) => el.classList.remove('activo'));
+                bloque.classList.add('activo');
+            });
+
+            listaFormulas.append(bloque);
+        });
+
+        modalFormulas.hidden = false;
+        listaFormulas.querySelector('input')?.focus();
+    };
+
+    const cerrarModalFormulas = () => {
+        if (!modalFormulas) return;
+        modalFormulas.hidden = true;
+        tablaFormulas = null;
+    };
+
+    const aplicarModalFormulas = () => {
+        if (!tablaFormulas || !listaFormulas) return;
+        listaFormulas.querySelectorAll('.dato-formula').forEach((bloque) => {
+            const campo = bloque.querySelector('input[data-clave]');
+            const th = tablaFormulas.querySelector('th[data-clave="' + bloque.dataset.clave + '"]');
+            if (!campo || !th) return;
+            const anterior = th.querySelector('.formula-col')?.value || th.dataset.formula || '';
+            aplicarFormulaColumna(tablaFormulas, th, campo.value, anterior);
+        });
+        cerrarModalFormulas();
+    };
+
+    document.querySelectorAll('[data-abrir-formulas]').forEach((boton) => {
+        boton.addEventListener('click', () => {
+            const form = boton.closest('form');
+            const tabla = form?.querySelector('table[data-hoja]') || document.querySelector('table[data-hoja]');
+            if (tabla) abrirModalFormulas(tabla);
+        });
+    });
+    document.querySelectorAll('[data-cerrar-formulas]').forEach((boton) => {
+        boton.addEventListener('click', cerrarModalFormulas);
+    });
+    document.querySelector('[data-aplicar-formulas]')?.addEventListener('click', aplicarModalFormulas);
+    modalFormulas?.addEventListener('click', (evento) => {
+        if (evento.target === modalFormulas) cerrarModalFormulas();
+    });
+    document.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape' && modalFormulas && !modalFormulas.hidden) {
+            cerrarModalFormulas();
+        }
+    });
 }());
