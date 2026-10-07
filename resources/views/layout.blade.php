@@ -168,6 +168,7 @@
             @elseif (auth()->user()->esSistemas())
                 <a class="btn-menu @if (request()->routeIs('empresas.*')) activo @endif" href="{{ route('empresas.create') }}">Nueva empresa</a>
             @endif
+            <a class="btn-menu @if (request()->routeIs('perfil.*')) activo @endif" href="{{ route('perfil.edit') }}">Perfil</a>
             <form method="post" action="{{ route('salir') }}">
                 @csrf
                 <button class="btn-menu salir" type="submit">Salir</button>

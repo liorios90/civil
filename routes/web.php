@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnexoController;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\ContratoController;
 use App\Http\Controllers\EmpresaController;
 use App\Http\Controllers\FiscalizacionController;
@@ -27,6 +28,8 @@ Route::get('/fiscalizacion/{token}/archivos/{ruta}', [FiscalizacionController::c
 Route::middleware(['auth', 'empresa.activa'])->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('salir');
     Route::get('/', [InicioController::class, 'index'])->name('inicio');
+    Route::get('/perfil', [PerfilController::class, 'edit'])->name('perfil.edit');
+    Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
 
     Route::middleware('rol:sistemas')->group(function () {
         Route::get('/empresas', [EmpresaController::class, 'index'])->name('empresas.index');
