@@ -57,6 +57,62 @@ class HojaCalculo
     }
 
     /**
+     * Hoja libre: A es la descripción, B un dato y C la cantidad a facturar.
+     *
+     * @return list<array{clave: string, etiqueta: string}>
+     */
+    public static function columnasExcel(): array
+    {
+        return [
+            ['clave' => 'descripcion', 'etiqueta' => 'Descripción'],
+            ['clave' => 'b', 'etiqueta' => 'B'],
+            ['clave' => 'total', 'etiqueta' => 'Total'],
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $columnas
+     */
+    public static function esHojaClasica(array $columnas): bool
+    {
+        if ($columnas === []) {
+            return true;
+        }
+        foreach ($columnas as $columna) {
+            if (self::formulaEscrita($columna['formula'] ?? '') !== '') {
+                return false;
+            }
+            if (! in_array((string) ($columna['clave'] ?? ''), self::FIJAS, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $columnas
+     */
+    public static function soloLetras(array $columnas): bool
+    {
+        foreach ($columnas as $columna) {
+            if (self::formulaEscrita($columna['formula'] ?? '') !== '') {
+                return false;
+            }
+            $clave = (string) ($columna['clave'] ?? '');
+            $etiqueta = trim((string) ($columna['etiqueta'] ?? ''));
+            if ($clave === 'descripcion' || $clave === 'total' || in_array($clave, self::FIJAS, true)) {
+                continue;
+            }
+            if ($etiqueta !== '' && ! preg_match('/^[A-Z]+$/', $etiqueta)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * @param  array<int, mixed>|null  $guardadas
      * @return list<array{clave: string, etiqueta: string}>
      */

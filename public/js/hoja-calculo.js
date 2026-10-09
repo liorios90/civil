@@ -352,6 +352,8 @@
     });
 
     const pintar = (input, raw, valor) => {
+        const td = input.closest('td');
+        if (td) td.classList.toggle('con-formula', raw.startsWith('='));
         if (document.activeElement === input || input.dataset.texto) return;
         if (raw.startsWith('=')) {
             const mala = valor == null || Number.isNaN(valor);
@@ -360,11 +362,7 @@
             return;
         }
         input.classList.remove('malo');
-        if (raw !== '') {
-            input.value = raw;
-            return;
-        }
-        input.value = valor == null ? '' : texto(valor);
+        input.value = raw;
     };
 
     const recalcular = (tabla, conAutomaticos) => {
@@ -381,6 +379,36 @@
                 pintar(input, raw, valores[r][td.dataset.clave]);
             });
         });
+        pintarSuma(tabla, valores);
+    };
+
+    const pintarSuma = (tabla, valores) => {
+        const claves = columnasDe(tabla);
+        const ultima = claves[claves.length - 1];
+        let suma = 0;
+        if (ultima && ultima !== 'descripcion') {
+            [...tabla.tBodies[0].rows].forEach((tr, r) => {
+                const raw = String(tr.querySelector('td[data-clave="' + ultima + '"] .celda')?.dataset.raw || '').trim();
+                if (raw.startsWith('=')) {
+                    const valor = valores[r] ? valores[r][ultima] : null;
+                    if (valor != null && !Number.isNaN(valor)) suma += valor;
+                } else if (raw !== '') {
+                    const valor = numero(raw);
+                    if (valor != null) suma += valor;
+                }
+            });
+        }
+        let pie = tabla.tFoot?.rows[0];
+        if (!pie) {
+            pie = (tabla.tFoot || tabla.createTFoot()).insertRow();
+        }
+        while (pie.cells.length < claves.length + 1) pie.insertCell();
+        while (pie.cells.length > claves.length + 1) pie.deleteCell(-1);
+        [...pie.cells].forEach((td, indice) => {
+            td.className = indice === 0 ? 'suma-etiqueta' : (indice === pie.cells.length - 1 ? 'suma-final' : '');
+            td.textContent = indice === 0 ? 'Suma' : (indice === pie.cells.length - 1 ? texto(suma) : '');
+            if (indice === pie.cells.length - 1) td.dataset.suma = '1';
+        });
     };
 
     const letras = (tabla) => {
@@ -388,7 +416,14 @@
         [...tabla.querySelectorAll('thead th')].forEach((th) => {
             const marca = th.querySelector('.letra');
             if (!marca) return;
-            marca.textContent = letra(indice);
+            const texto = letra(indice);
+            marca.textContent = texto;
+            if (tabla.dataset.letras === '1' && th.dataset.clave !== 'descripcion' && th.dataset.clave !== 'total') {
+                const nombre = th.querySelector('.etiqueta');
+                if (nombre && (nombre.value === '' || nombre.value === 'Columna' || /^[A-Z]+$/.test(nombre.value))) {
+                    nombre.value = texto;
+                }
+            }
             indice += 1;
         });
     };
@@ -480,13 +515,14 @@
         recalcular(tabla, true);
     };
 
-    const crearCelda = (clave, indice, formula) => {
+    const crearCelda = (clave, indice, formula, soloLetra) => {
         const td = document.createElement('td');
         td.dataset.clave = clave;
         const input = document.createElement('input');
         input.className = clave === 'descripcion' ? 'celda' : 'n celda';
         if (clave === 'descripcion') input.dataset.texto = '1';
         const raw = formula ? formulaEnFila(formula, indice + 1) : '';
+        if (clave === 'descripcion' && soloLetra) input.placeholder = 'Descripción';
         input.dataset.raw = raw;
         input.value = raw;
         input.autocomplete = 'off';
@@ -499,7 +535,7 @@
         return td;
     };
 
-    const crearEncabezado = (clave, etiqueta) => {
+    const crearEncabezado = (clave, etiqueta, soloLetra) => {
         const th = document.createElement('th');
         th.dataset.clave = clave;
         const orden = document.createElement('input');
@@ -514,6 +550,7 @@
         nombre.value = etiqueta;
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
+        if (soloLetra) nombre.type = 'hidden';
         th.append(orden, marca, nombre);
         if (clave !== 'descripcion') {
             const formula = document.createElement('input');
@@ -551,24 +588,56 @@
 
     const iniciar = (tabla) => {
         const form = tabla.closest('form');
+        const barra = form?.querySelector('[data-fx-input]');
+        const marcaRef = form?.querySelector('[data-fx-ref]');
+        let celdaActiva = null;
+
+        const escribirCelda = (input, valor) => {
+            input.dataset.raw = valor;
+            const hidden = input.parentElement.querySelector('.crudo');
+            if (hidden) hidden.value = valor;
+            if (!input.dataset.texto) recalcular(tabla, true);
+        };
+
+        const mostrarBarra = (input) => {
+            celdaActiva = input;
+            tabla.querySelectorAll('td.activa').forEach((td) => td.classList.remove('activa'));
+            const td = input.closest('td');
+            if (td) td.classList.add('activa');
+            const filas = [...tabla.tBodies[0].rows];
+            const fila = filas.indexOf(input.closest('tr')) + 1;
+            const columna = columnasDe(tabla).indexOf(td?.dataset.clave);
+            if (marcaRef) marcaRef.textContent = (columna >= 0 ? letra(columna) : '') + (fila > 0 ? fila : '');
+            if (barra && document.activeElement !== barra) barra.value = input.dataset.raw || '';
+        };
+
         tabla.addEventListener('input', (evento) => {
             const input = evento.target;
             if (!input.classList || !input.classList.contains('celda')) return;
-            input.dataset.raw = input.value;
-            const hidden = input.parentElement.querySelector('.crudo');
-            if (hidden) hidden.value = input.value;
-            if (!input.dataset.texto) recalcular(tabla, true);
+            if (barra && input === celdaActiva && document.activeElement === input) barra.value = input.value;
+            escribirCelda(input, input.value);
         });
         tabla.addEventListener('focusin', (evento) => {
             const input = evento.target;
             if (!input.classList || !input.classList.contains('celda')) return;
+            mostrarBarra(input);
             if (input.dataset.raw) input.value = input.dataset.raw;
             input.select();
         });
         tabla.addEventListener('focusout', (evento) => {
             const input = evento.target;
             if (!input.classList || !input.classList.contains('celda') || input.dataset.texto) return;
+            if (evento.relatedTarget === barra) return;
             recalcular(tabla, true);
+        });
+        barra?.addEventListener('input', () => {
+            if (!celdaActiva) return;
+            escribirCelda(celdaActiva, barra.value);
+        });
+        barra?.addEventListener('keydown', (evento) => {
+            if (evento.key !== 'Enter') return;
+            evento.preventDefault();
+            celdaActiva?.focus();
         });
         tabla.querySelectorAll('thead th').forEach(actualizarVistaFormula);
         tabla.addEventListener('click', (evento) => {
@@ -653,7 +722,7 @@
         });
         form?.querySelector('[data-agregar-columna]')?.addEventListener('click', () => {
             const clave = 'c' + Date.now().toString(36);
-            const th = crearEncabezado(clave, 'Columna');
+            const th = crearEncabezado(clave, tabla.dataset.letras === '1' ? '' : 'Columna', tabla.dataset.letras === '1');
             const total = tabla.querySelector('th[data-clave="total"]');
             if (total) total.before(th);
             else tabla.querySelector('thead tr').append(th);
@@ -671,7 +740,7 @@
             tr.append(crearMarcaFila(indice + 1));
             columnasDe(tabla).forEach((clave) => {
                 const encabezado = tabla.querySelector('th[data-clave="' + clave + '"]');
-                tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || ''));
+                tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || '', tabla.dataset.letras === '1'));
             });
             tabla.tBodies[0].append(tr);
             numerar(tabla);

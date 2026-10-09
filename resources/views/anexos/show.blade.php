@@ -68,6 +68,10 @@
             $plantillaMedicion,
             $anexo->lineas,
         );
+        if (! $usarPlantilla && \App\Services\HojaCalculo::esHojaClasica($columnasHoja)) {
+            $columnasHoja = \App\Services\HojaCalculo::columnasExcel();
+        }
+        $soloLetras = \App\Services\HojaCalculo::soloLetras($columnasHoja);
         $filasMedicion = $anexo->lineas->values();
         $totalFilas = max($filasMedicion->count() + 8, 12);
     @endphp
@@ -78,6 +82,7 @@
         table.hoja[data-hoja] td { min-width: 88px; max-width: 160px; }
         table.hoja[data-hoja] td[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
         table.hoja[data-hoja] th .letra { display: block; font-size: 10px; font-weight: 400; opacity: .75; }
+        table.hoja[data-letras="1"] th .letra { font-size: 15px; font-weight: 700; opacity: 1; letter-spacing: .04em; }
         table.hoja[data-hoja] th input.etiqueta { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; background: transparent; color: #fff; border: 0; border-bottom: 1px solid rgba(255,255,255,.45); border-radius: 0; text-align: center; padding: 2px 4px; font-weight: 700; }
         table.hoja[data-hoja] th input.formula-col { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         table.hoja[data-hoja] th .formula-vista { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; opacity: .9; color: #d7e8f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -116,13 +121,22 @@
         table.hoja[data-hoja] td input.n,
         table.hoja[data-hoja] td input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 6px 4px; }
         table.hoja[data-hoja] input.celda.malo { color: #9b1c1c; background: #fdecec; }
+        table.hoja[data-hoja] td.activa { outline: 2px solid #1d6f42; outline-offset: -2px; }
+        table.hoja[data-hoja] td.con-formula { background: #eef6ea; }
+        table.hoja[data-hoja] td.con-formula input { background: transparent; }
+        table.hoja[data-hoja] tfoot td { background: #eef3ea; font-weight: 700; color: #1f4e79; padding: 8px; text-align: right; }
+        table.hoja[data-hoja] tfoot td.suma-etiqueta { text-align: center; background: #e7eef5; }
+        .excel-barra { display: flex; align-items: stretch; gap: 0; margin: 0 0 8px; border: 1px solid #c5d0db; border-radius: 8px; overflow: hidden; background: #fff; }
+        .excel-barra .excel-ref { flex: none; min-width: 64px; display: flex; align-items: center; justify-content: center; padding: 0 10px; background: #e7eef5; color: #0f3d68; font-weight: 700; font-size: 13px; border-right: 1px solid #c5d0db; }
+        .excel-barra .excel-fx { flex: none; display: flex; align-items: center; padding: 0 10px; color: #1d6f42; font-weight: 700; font-style: italic; border-right: 1px solid #c5d0db; }
+        .excel-barra input { border: 0; border-radius: 0; font-family: Consolas, "Courier New", monospace; }
     </style>
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}" data-tipo="{{ $tipoMedicion }}">
         @csrf
         <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
         <div class="card">
             <h2>Mediciones</h2>
-            <p>{{ $explicaMedicion }} Escriba la descripción y los datos. Use <strong>Fórmulas</strong> para definir cómo se calcula cada columna solo en esta hoja (por ejemplo =altura*peso). La fórmula se aplica a todas las filas; si una fila necesita otra, cámbiela solo en esa celda. Puede cambiar el nombre de cada columna, agregar columnas o quitarlas, y quitar filas con la × de su número. La descripción siempre está y la columna Total es la cantidad que se factura.</p>
+            <p>@if ($soloLetras) Escriba la descripción en la columna A. En las demás columnas escriba un número o una fórmula, por ejemplo =B2*2. @else {{ $explicaMedicion }} Si la columna tiene fórmula, se ve el resultado. Si no tiene, escriba en la celda un número o una fórmula. @endif La suma de la última columna es la cantidad que pasa a la planilla del frente.</p>
             <p class="acciones">
                 @if ($periodoAbierto)
                     <button type="button" data-abrir-formulas>Fórmulas</button>
@@ -130,8 +144,13 @@
                 <button type="button" class="secundario" data-agregar-columna>Agregar columna</button>
                 <button type="button" class="secundario" data-agregar-fila>Agregar fila</button>
             </p>
+            <div class="excel-barra">
+                <span class="excel-ref" data-fx-ref>A1</span>
+                <span class="excel-fx">fx</span>
+                <input data-fx-input autocomplete="off" placeholder="Valor o fórmula de la celda, por ejemplo =altura*peso" @disabled(! $periodoAbierto)>
+            </div>
             <div class="scroll">
-                <table class="hoja" data-hoja data-tipo="{{ $tipoMedicion }}">
+                <table class="hoja" data-hoja data-tipo="{{ $tipoMedicion }}" @if ($soloLetras) data-letras="1" @endif>
                     <thead>
                         <tr>
                             <th class="esquina"></th>
@@ -139,7 +158,11 @@
                                 <th data-clave="{{ $columna['clave'] }}" @if (! empty($columna['formula'])) data-formula="{{ $columna['formula'] }}" @endif>
                                     <input type="hidden" name="orden_columnas[]" value="{{ $columna['clave'] }}">
                                     <span class="letra">{{ \App\Services\HojaCalculo::letra($indice) }}</span>
-                                    <input class="etiqueta" name="etiquetas[{{ $columna['clave'] }}]" value="{{ $columna['etiqueta'] }}" maxlength="40" autocomplete="off">
+                                    @if ($soloLetras)
+                                        <input type="hidden" class="etiqueta" name="etiquetas[{{ $columna['clave'] }}]" value="{{ $columna['etiqueta'] }}">
+                                    @else
+                                        <input class="etiqueta" name="etiquetas[{{ $columna['clave'] }}]" value="{{ $columna['etiqueta'] }}" maxlength="40" autocomplete="off">
+                                    @endif
                                     @if ($columna['clave'] !== 'descripcion')
                                         <input class="formula-col" name="formulas[{{ $columna['clave'] }}]" value="{{ $columna['formula'] ?? '' }}" placeholder="Fórmula" maxlength="200" autocomplete="off" tabindex="-1" aria-hidden="true">
                                         <span class="formula-vista">{{ $columna['formula'] ?? '' }}</span>
@@ -164,16 +187,26 @@
                                         if ($editor['raw'] === '' && ! empty($columna['formula'])) {
                                             $editor['raw'] = \App\Services\HojaCalculo::formulaEnFila($columna['formula'], $i + 1);
                                             $editor['visible'] = $editor['raw'];
+                                        } elseif ($columna['clave'] !== 'descripcion' && $editor['raw'] === '') {
+                                            $editor['visible'] = '';
                                         }
                                     @endphp
                                     <td data-clave="{{ $columna['clave'] }}">
-                                        <input class="{{ $columna['clave'] === 'descripcion' ? 'celda' : 'n celda' }}" @if ($columna['clave'] === 'descripcion') data-texto="1" @endif data-raw="{{ $editor['raw'] }}" value="{{ $editor['visible'] }}" autocomplete="off">
+                                        <input class="{{ $columna['clave'] === 'descripcion' ? 'celda' : 'n celda' }}" @if ($columna['clave'] === 'descripcion') data-texto="1" @endif @if ($soloLetras && $columna['clave'] === 'descripcion') placeholder="Descripción" @endif data-raw="{{ $editor['raw'] }}" value="{{ $editor['visible'] }}" autocomplete="off">
                                         <input type="hidden" class="crudo" name="lineas[{{ $i }}][celdas][{{ $columna['clave'] }}]" value="{{ $editor['raw'] }}">
                                     </td>
                                 @endforeach
                             </tr>
                         @endfor
                     </tbody>
+                    <tfoot>
+                        <tr>
+                            <td class="suma-etiqueta">Suma</td>
+                            @foreach ($columnasHoja as $columna)
+                                <td @if ($loop->last) class="suma-final" data-suma @endif>@if ($loop->last) 0.00 @endif</td>
+                            @endforeach
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>

@@ -61,6 +61,7 @@ class AnexoController extends Controller
         $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
         $columnas = HojaCalculo::normalizar($data['orden_columnas'] ?? null, $data['etiquetas'] ?? [], $tipo, $data['formulas'] ?? []);
         $claves = array_column($columnas, 'clave');
+        $ultima = (string) ($claves[array_key_last($claves)] ?? 'total');
         $crudas = [];
         foreach ($data['lineas'] ?? [] as $linea) {
             $fila = [];
@@ -86,12 +87,14 @@ class AnexoController extends Controller
         $existentes = $anexo->lineas()->get()->values();
         $orden = 1;
 
-        foreach ($resueltas as $resuelta) {
+        foreach ($resueltas as $indice => $resuelta) {
+            $textoUltima = trim((string) ($crudas[$indice][$ultima] ?? ''));
+            $cantidad = $textoUltima === '' ? 0.0 : round((float) ($resuelta['numeros'][$ultima] ?? 0), 2);
             $valores = [
                 'orden' => $orden,
                 'descripcion' => $resuelta['descripcion'] !== '' ? $resuelta['descripcion'] : null,
                 'celdas' => $resuelta['celdas'] !== [] ? $resuelta['celdas'] : null,
-                'total' => $resuelta['numeros']['total'] ?? 0,
+                'total' => $cantidad,
             ];
             foreach (['base1', 'base2', 'altura', 'numero', 'longitud', 'area', 'volumen'] as $campo) {
                 $valores[$campo] = $resuelta['numeros'][$campo] ?? null;
