@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Anexo;
 use App\Models\AnexoImagen;
 use App\Models\MedicionLinea;
 use App\Models\PlanillaRubro;
@@ -25,40 +26,80 @@ class AnexoController extends Controller
         $frente = $ejecucion->rubro->frente;
         $editable = $frente->esUltimaPlanilla();
         if ($editable) {
-            $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
-            $anexo->load(['lineas', 'imagenes']);
-        } else {
-            $anexo = $ejecucion->anexos()->where('hoja', 1)->with(['lineas', 'imagenes'])->first()
-                ?? $ejecucion->anexos()->make(['hoja' => 1, 'tipo' => 'geometrico']);
-            if (! $anexo->exists) {
-                $anexo->setRelation('lineas', collect());
-                $anexo->setRelation('imagenes', collect());
-            }
+            $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
+        }
+        $anexos = $ejecucion->anexos()->with(['lineas', 'imagenes'])->orderBy('hoja')->get();
+        if ($anexos->isEmpty()) {
+            $vacio = $ejecucion->anexos()->make(['hoja' => 1, 'tipo' => 'geometrico']);
+            $vacio->setRelation('lineas', collect());
+            $vacio->setRelation('imagenes', collect());
+            $anexos = collect([$vacio]);
         }
 
         return view('anexos.show', [
             'ejecucion' => $ejecucion,
-            'anexo' => $anexo,
+            'anexo' => $anexos->first(),
+            'anexos' => $anexos,
             'periodoAbierto' => $editable,
         ]);
+    }
+
+    public function subtotal(PlanillaRubro $ejecucion)
+    {
+        $this->asegurarEditable($ejecucion);
+        $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
+        $siguiente = ((int) $ejecucion->anexos()->max('hoja')) + 1;
+        $ejecucion->anexos()->create([
+            'hoja' => $siguiente,
+            'tipo' => 'geometrico',
+            'columnas' => HojaCalculo::columnasExcel(),
+        ]);
+
+        return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Tabla de subtotal agregada.');
+    }
+
+    public function destroySubtotal(PlanillaRubro $ejecucion, Anexo $anexo, PlanillaCalculator $calculator)
+    {
+        $this->asegurarEditable($ejecucion);
+        abort_unless($anexo->planilla_rubro_id === $ejecucion->id && (int) $anexo->hoja > 1, 404);
+        $anexo->delete();
+        $calculator->sincronizarCantidadActual($ejecucion);
+
+        return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Tabla de subtotal quitada.');
     }
 
     public function guardar(Request $request, PlanillaRubro $ejecucion, PlanillaCalculator $calculator)
     {
         $this->asegurarEditable($ejecucion);
         $data = $request->validate([
-            'orden_columnas' => ['nullable', 'array', 'max:24'],
-            'orden_columnas.*' => ['required', 'string', 'max:31'],
-            'etiquetas' => ['nullable', 'array'],
-            'etiquetas.*' => ['nullable', 'string', 'max:40'],
-            'formulas' => ['nullable', 'array'],
-            'formulas.*' => ['nullable', 'string', 'max:200'],
-            'lineas' => ['nullable', 'array', 'max:200'],
-            'lineas.*.celdas' => ['nullable', 'array'],
-            'lineas.*.celdas.*' => ['nullable', 'string', 'max:500'],
+            'tablas' => ['required', 'array'],
+            'tablas.*.orden_columnas' => ['nullable', 'array', 'max:24'],
+            'tablas.*.orden_columnas.*' => ['required', 'string', 'max:31'],
+            'tablas.*.etiquetas' => ['nullable', 'array'],
+            'tablas.*.etiquetas.*' => ['nullable', 'string', 'max:40'],
+            'tablas.*.formulas' => ['nullable', 'array'],
+            'tablas.*.formulas.*' => ['nullable', 'string', 'max:200'],
+            'tablas.*.lineas' => ['nullable', 'array', 'max:200'],
+            'tablas.*.lineas.*.celdas' => ['nullable', 'array'],
+            'tablas.*.lineas.*.celdas.*' => ['nullable', 'string', 'max:500'],
         ]);
 
         $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
+        foreach ($data['tablas'] as $id => $tabla) {
+            $anexo = $ejecucion->anexos()->whereKey($id)->firstOrFail();
+            $this->guardarTabla($anexo, $tabla, $tipo);
+        }
+
+        $calculator->sincronizarCantidadActual($ejecucion);
+
+        return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Mediciones guardadas.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function guardarTabla(Anexo $anexo, array $data, string $tipo): void
+    {
         $columnas = HojaCalculo::normalizar($data['orden_columnas'] ?? null, $data['etiquetas'] ?? [], $tipo, $data['formulas'] ?? []);
         $claves = array_column($columnas, 'clave');
         $ultima = (string) ($claves[array_key_last($claves)] ?? 'total');
@@ -82,7 +123,6 @@ class AnexoController extends Controller
         $crudas = array_slice($crudas, 0, $ultimo + 1);
         $resueltas = HojaCalculo::resolver($crudas, $columnas, $tipo);
 
-        $anexo = $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
         $anexo->update(['columnas' => $columnas]);
         $existentes = $anexo->lineas()->get()->values();
         $orden = 1;
@@ -109,10 +149,6 @@ class AnexoController extends Controller
         }
 
         $existentes->slice($orden - 1)->each(fn (MedicionLinea $sobrante) => $sobrante->setRelation('anexo', $anexo)->delete());
-
-        $calculator->sincronizarCantidadActual($ejecucion);
-
-        return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Mediciones guardadas.');
     }
 
     /**

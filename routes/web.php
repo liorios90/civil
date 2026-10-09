@@ -89,6 +89,8 @@ Route::middleware(['auth', 'empresa.activa'])->group(function () {
         Route::get('/planillas/{planilla}/avance', [ImpresionController::class, 'comparacion'])->name('avance.comparacion');
         Route::get('/ejecuciones/{ejecucion}/imprimir', [ImpresionController::class, 'anexo'])->name('impresion.anexo');
         Route::post('/ejecuciones/{ejecucion}/anexo/guardar', [AnexoController::class, 'guardar'])->name('anexos.guardar');
+        Route::post('/ejecuciones/{ejecucion}/subtotales', [AnexoController::class, 'subtotal'])->name('anexos.subtotal');
+        Route::delete('/ejecuciones/{ejecucion}/subtotales/{anexo}', [AnexoController::class, 'destroySubtotal'])->name('anexos.subtotal.destroy');
         Route::post('/ejecuciones/{ejecucion}/imagenes', [AnexoController::class, 'imagenes'])->name('anexos.imagenes');
         Route::get('/archivos/{ruta}', [AnexoController::class, 'archivo'])->where('ruta', '.*')->name('archivos.publicos');
         Route::delete('/ejecuciones/{ejecucion}/imagenes/{imagen}', [AnexoController::class, 'destroyImagen'])->name('anexos.imagenes.destroy');

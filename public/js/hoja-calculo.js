@@ -409,7 +409,18 @@
             td.textContent = indice === 0 ? 'Suma' : (indice === pie.cells.length - 1 ? texto(suma) : '');
             if (indice === pie.cells.length - 1) td.dataset.suma = '1';
         });
+        const general = document.querySelector('[data-suma-general]');
+        if (general) {
+            let total = 0;
+            document.querySelectorAll('table[data-hoja] [data-suma]').forEach((td) => {
+                const valor = numero(td.textContent);
+                if (valor != null) total += valor;
+            });
+            general.textContent = texto(total);
+        }
     };
+
+    const campo = (tabla, cola) => (tabla.dataset.prefijo || '') + cola;
 
     const letras = (tabla) => {
         let indice = 0;
@@ -515,7 +526,7 @@
         recalcular(tabla, true);
     };
 
-    const crearCelda = (clave, indice, formula, soloLetra) => {
+    const crearCelda = (clave, indice, formula, soloLetra, prefijo) => {
         const td = document.createElement('td');
         td.dataset.clave = clave;
         const input = document.createElement('input');
@@ -529,24 +540,24 @@
         const hidden = document.createElement('input');
         hidden.type = 'hidden';
         hidden.className = 'crudo';
-        hidden.name = 'lineas[' + indice + '][celdas][' + clave + ']';
+        hidden.name = (prefijo || '') + '[lineas][' + indice + '][celdas][' + clave + ']';
         hidden.value = raw;
         td.append(input, hidden);
         return td;
     };
 
-    const crearEncabezado = (clave, etiqueta, soloLetra) => {
+    const crearEncabezado = (clave, etiqueta, soloLetra, prefijo) => {
         const th = document.createElement('th');
         th.dataset.clave = clave;
         const orden = document.createElement('input');
         orden.type = 'hidden';
-        orden.name = 'orden_columnas[]';
+        orden.name = (prefijo || '') + '[orden_columnas][]';
         orden.value = clave;
         const marca = document.createElement('span');
         marca.className = 'letra';
         const nombre = document.createElement('input');
         nombre.className = 'etiqueta';
-        nombre.name = 'etiquetas[' + clave + ']';
+        nombre.name = (prefijo || '') + '[etiquetas][' + clave + ']';
         nombre.value = etiqueta;
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
@@ -555,7 +566,7 @@
         if (clave !== 'descripcion') {
             const formula = document.createElement('input');
             formula.className = 'formula-col';
-            formula.name = 'formulas[' + clave + ']';
+            formula.name = (prefijo || '') + '[formulas][' + clave + ']';
             formula.placeholder = 'Fórmula';
             formula.maxLength = 200;
             formula.autocomplete = 'off';
@@ -580,7 +591,7 @@
         [...tabla.tBodies[0].rows].forEach((tr, indice) => {
             tr.querySelectorAll('.crudo').forEach((hidden) => {
                 const clave = hidden.closest('td').dataset.clave;
-                hidden.name = 'lineas[' + indice + '][celdas][' + clave + ']';
+                hidden.name = campo(tabla, '[lineas][' + indice + '][celdas][' + clave + ']');
                 hidden.value = hidden.closest('td').querySelector('.celda')?.dataset.raw || '';
             });
         });
@@ -588,8 +599,9 @@
 
     const iniciar = (tabla) => {
         const form = tabla.closest('form');
-        const barra = form?.querySelector('[data-fx-input]');
-        const marcaRef = form?.querySelector('[data-fx-ref]');
+        const bloque = tabla.closest('[data-tabla-medicion]') || form;
+        const barra = bloque?.querySelector('[data-fx-input]');
+        const marcaRef = bloque?.querySelector('[data-fx-ref]');
         let celdaActiva = null;
 
         const escribirCelda = (input, valor) => {
@@ -720,27 +732,27 @@
             destino.focus();
             destino.select();
         });
-        form?.querySelector('[data-agregar-columna]')?.addEventListener('click', () => {
+        bloque?.querySelector('[data-agregar-columna]')?.addEventListener('click', () => {
             const clave = 'c' + Date.now().toString(36);
-            const th = crearEncabezado(clave, tabla.dataset.letras === '1' ? '' : 'Columna', tabla.dataset.letras === '1');
+            const th = crearEncabezado(clave, tabla.dataset.letras === '1' ? '' : 'Columna', tabla.dataset.letras === '1', tabla.dataset.prefijo || '');
             const total = tabla.querySelector('th[data-clave="total"]');
             if (total) total.before(th);
             else tabla.querySelector('thead tr').append(th);
             [...tabla.tBodies[0].rows].forEach((tr, indice) => {
-                const td = crearCelda(clave, indice);
+                const td = crearCelda(clave, indice, '', tabla.dataset.letras === '1', tabla.dataset.prefijo || '');
                 const celdaTotal = tr.querySelector('td[data-clave="total"]');
                 if (celdaTotal) celdaTotal.before(td);
                 else tr.append(td);
             });
             letras(tabla);
         });
-        form?.querySelector('[data-agregar-fila]')?.addEventListener('click', () => {
+        bloque?.querySelector('[data-agregar-fila]')?.addEventListener('click', () => {
             const indice = tabla.tBodies[0].rows.length;
             const tr = document.createElement('tr');
             tr.append(crearMarcaFila(indice + 1));
             columnasDe(tabla).forEach((clave) => {
                 const encabezado = tabla.querySelector('th[data-clave="' + clave + '"]');
-                tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || '', tabla.dataset.letras === '1'));
+                tr.append(crearCelda(clave, indice, encabezado?.dataset.formula || '', tabla.dataset.letras === '1', tabla.dataset.prefijo || ''));
             });
             tabla.tBodies[0].append(tr);
             numerar(tabla);
@@ -896,8 +908,7 @@
 
     document.querySelectorAll('[data-abrir-formulas]').forEach((boton) => {
         boton.addEventListener('click', () => {
-            const form = boton.closest('form');
-            const tabla = form?.querySelector('table[data-hoja]') || document.querySelector('table[data-hoja]');
+            const tabla = boton.closest('[data-tabla-medicion]')?.querySelector('table[data-hoja]');
             if (tabla) abrirModalFormulas(tabla);
         });
     });
