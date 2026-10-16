@@ -45,10 +45,10 @@ class HojaCalculo
     {
         return [
             ['clave' => 'descripcion', 'etiqueta' => 'Descripción'],
-            ['clave' => 'base1', 'etiqueta' => 'Base 1'],
-            ['clave' => 'base2', 'etiqueta' => 'Base 2'],
-            ['clave' => 'altura', 'etiqueta' => 'Altura'],
-            ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número'],
+            ['clave' => 'base1', 'etiqueta' => 'Base 1 (m)'],
+            ['clave' => 'base2', 'etiqueta' => 'Base 2 (m)'],
+            ['clave' => 'altura', 'etiqueta' => 'Altura (m)'],
+            ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número (u)'],
             ['clave' => 'longitud', 'etiqueta' => 'Longitud'],
             ['clave' => 'area', 'etiqueta' => 'Área'],
             ['clave' => 'volumen', 'etiqueta' => 'Volumen'],
@@ -171,10 +171,6 @@ class HojaCalculo
             if (count($columnas) >= 24) {
                 break;
             }
-        }
-
-        if (! isset($vistas['total'])) {
-            $columnas[] = ['clave' => 'total', 'etiqueta' => 'Total'];
         }
 
         return $columnas === [] ? self::columnasIniciales($tipo) : $columnas;

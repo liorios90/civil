@@ -15,6 +15,10 @@
         header small { display: block; clear: both; opacity: .8; margin-top: 8px; }
         main { padding: 24px; }
         .card { background: #fff; border: 1px solid #d9e0e7; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+        .ubicacion { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; background: #0f3d68; color: #fff; border: 0; }
+        .ubicacion span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .ubicacion small { opacity: .75; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+        .ubicacion strong { font-size: 16px; line-height: 1.3; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
         th, td { border: 1px solid #d5dde5; padding: 6px 8px; vertical-align: top; }
         th { background: #e8eef5; text-align: center; position: sticky; top: 0; }

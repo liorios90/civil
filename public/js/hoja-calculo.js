@@ -362,6 +362,13 @@
             return;
         }
         input.classList.remove('malo');
+        const calculada = ['longitud', 'area', 'volumen', 'total'].includes(td?.dataset.clave || '');
+        if (raw === '' && calculada) {
+            input.value = valor == null ? '' : texto(valor);
+            if (td) td.classList.add('calc');
+            return;
+        }
+        if (td) td.classList.remove('calc');
         input.value = raw;
     };
 
@@ -395,6 +402,8 @@
                 } else if (raw !== '') {
                     const valor = numero(raw);
                     if (valor != null) suma += valor;
+                } else if (valores[r] && valores[r][ultima] != null && !Number.isNaN(valores[r][ultima])) {
+                    suma += valores[r][ultima];
                 }
             });
         }
@@ -429,12 +438,6 @@
             if (!marca) return;
             const texto = letra(indice);
             marca.textContent = texto;
-            if (tabla.dataset.letras === '1' && th.dataset.clave !== 'descripcion' && th.dataset.clave !== 'total') {
-                const nombre = th.querySelector('.etiqueta');
-                if (nombre && (nombre.value === '' || nombre.value === 'Columna' || /^[A-Z]+$/.test(nombre.value))) {
-                    nombre.value = texto;
-                }
-            }
             indice += 1;
         });
     };
@@ -452,12 +455,17 @@
         const num = document.createElement('span');
         num.className = 'num-fila';
         num.textContent = String(numero);
+        const insertar = document.createElement('button');
+        insertar.type = 'button';
+        insertar.className = 'insertar-fila';
+        insertar.title = 'Insertar fila debajo';
+        insertar.textContent = '+';
         const quitar = document.createElement('button');
         quitar.type = 'button';
         quitar.className = 'quitar-fila';
         quitar.title = 'Quitar fila';
         quitar.textContent = '×';
-        td.append(num, quitar);
+        td.append(num, insertar, quitar);
         return td;
     };
 
@@ -561,29 +569,21 @@
         nombre.value = etiqueta;
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
-        if (soloLetra) nombre.type = 'hidden';
         th.append(orden, marca, nombre);
-        if (clave !== 'descripcion') {
-            const formula = document.createElement('input');
-            formula.className = 'formula-col';
-            formula.name = (prefijo || '') + '[formulas][' + clave + ']';
-            formula.placeholder = 'Fórmula';
-            formula.maxLength = 200;
-            formula.autocomplete = 'off';
-            formula.tabIndex = -1;
-            formula.setAttribute('aria-hidden', 'true');
-            const vista = document.createElement('span');
-            vista.className = 'formula-vista';
-            th.append(formula, vista);
-        }
-        if (clave !== 'total' && clave !== 'descripcion') {
-            const quitar = document.createElement('button');
-            quitar.type = 'button';
-            quitar.className = 'quitar-col';
-            quitar.title = 'Quitar columna';
-            quitar.textContent = '×';
-            th.append(quitar);
-        }
+        const acciones = document.createElement('span');
+        acciones.className = 'cabecera-botones';
+        const insertar = document.createElement('button');
+        insertar.type = 'button';
+        insertar.className = 'insertar-col';
+        insertar.title = 'Insertar columna a la derecha';
+        insertar.textContent = '+';
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'quitar-col';
+        quitar.title = 'Quitar columna';
+        quitar.textContent = '×';
+        acciones.append(insertar, quitar);
+        th.append(acciones);
         return th;
     };
 
@@ -656,7 +656,8 @@
             const boton = evento.target.closest('.quitar-col');
             if (!boton || !tabla.contains(boton)) return;
             const th = boton.closest('th');
-            if (!th || th.dataset.clave === 'total' || th.dataset.clave === 'descripcion') return;
+            if (!th || !th.dataset.clave) return;
+            if (columnasDe(tabla).length <= 1) return;
             const nombre = th.querySelector('.etiqueta')?.value || 'esta columna';
             if (!window.confirm('¿Quitar la columna ' + nombre + '?')) return;
             const indice = [...th.parentElement.children].indexOf(th);
@@ -664,6 +665,46 @@
             [...tabla.tBodies[0].rows].forEach((tr) => tr.children[indice]?.remove());
             letras(tabla);
             recalcular(tabla, true);
+        });
+        const insertarColumna = (th) => {
+            const clave = 'c' + Date.now().toString(36);
+            const nuevo = crearEncabezado(clave, 'Columna', false, tabla.dataset.prefijo || '');
+            const filaEncabezado = th?.parentElement || tabla.querySelector('thead tr');
+            if (th) th.after(nuevo);
+            else filaEncabezado.append(nuevo);
+            const indice = [...nuevo.parentElement.children].indexOf(nuevo);
+            [...tabla.tBodies[0].rows].forEach((tr, i) => {
+                const td = crearCelda(clave, i, '', false, tabla.dataset.prefijo || '');
+                const referencia = tr.children[indice];
+                if (referencia) referencia.before(td);
+                else tr.append(td);
+            });
+            letras(tabla);
+            recalcular(tabla, true);
+            nuevo.querySelector('.etiqueta')?.focus();
+        };
+        tabla.addEventListener('click', (evento) => {
+            const boton = evento.target.closest('.insertar-col');
+            if (!boton || !tabla.contains(boton)) return;
+            insertarColumna(boton.closest('th'));
+        });
+        tabla.addEventListener('click', (evento) => {
+            const boton = evento.target.closest('.insertar-fila');
+            if (!boton || !tabla.contains(boton)) return;
+            const tr = boton.closest('tr');
+            const filas = [...tabla.tBodies[0].rows];
+            const indice = filas.indexOf(tr);
+            if (!tr || indice < 0) return;
+            const nueva = document.createElement('tr');
+            nueva.append(crearMarcaFila(indice + 2));
+            columnasDe(tabla).forEach((clave) => {
+                nueva.append(crearCelda(clave, indice + 1, '', false, tabla.dataset.prefijo || ''));
+            });
+            tr.after(nueva);
+            numerar(tabla);
+            reindexar(tabla);
+            recalcular(tabla, true);
+            nueva.querySelector('.celda')?.focus();
         });
         tabla.addEventListener('click', (evento) => {
             const boton = evento.target.closest('.quitar-fila');
@@ -733,18 +774,8 @@
             destino.select();
         });
         bloque?.querySelector('[data-agregar-columna]')?.addEventListener('click', () => {
-            const clave = 'c' + Date.now().toString(36);
-            const th = crearEncabezado(clave, tabla.dataset.letras === '1' ? '' : 'Columna', tabla.dataset.letras === '1', tabla.dataset.prefijo || '');
-            const total = tabla.querySelector('th[data-clave="total"]');
-            if (total) total.before(th);
-            else tabla.querySelector('thead tr').append(th);
-            [...tabla.tBodies[0].rows].forEach((tr, indice) => {
-                const td = crearCelda(clave, indice, '', tabla.dataset.letras === '1', tabla.dataset.prefijo || '');
-                const celdaTotal = tr.querySelector('td[data-clave="total"]');
-                if (celdaTotal) celdaTotal.before(td);
-                else tr.append(td);
-            });
-            letras(tabla);
+            const encabezados = [...tabla.querySelectorAll('thead th[data-clave]')];
+            insertarColumna(encabezados[encabezados.length - 1] || null);
         });
         bloque?.querySelector('[data-agregar-fila]')?.addEventListener('click', () => {
             const indice = tabla.tBodies[0].rows.length;
@@ -760,7 +791,8 @@
             tr.querySelector('.celda')?.focus();
         });
         form?.addEventListener('submit', () => reindexar(tabla));
-        recalcular(tabla, false);
+        letras(tabla);
+        recalcular(tabla, true);
     };
 
     document.querySelectorAll('table[data-hoja]').forEach(iniciar);

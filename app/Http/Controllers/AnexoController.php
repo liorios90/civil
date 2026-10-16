@@ -128,8 +128,7 @@ class AnexoController extends Controller
         $orden = 1;
 
         foreach ($resueltas as $indice => $resuelta) {
-            $textoUltima = trim((string) ($crudas[$indice][$ultima] ?? ''));
-            $cantidad = $textoUltima === '' ? 0.0 : round((float) ($resuelta['numeros'][$ultima] ?? 0), 2);
+            $cantidad = round((float) ($resuelta['numeros'][$ultima] ?? 0), 2);
             $valores = [
                 'orden' => $orden,
                 'descripcion' => $resuelta['descripcion'] !== '' ? $resuelta['descripcion'] : null,

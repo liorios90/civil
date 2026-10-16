@@ -3,7 +3,11 @@
 @section('titulo', $frente->nombre)
 
 @section('contenido')
-    <p><a href="{{ route('contratos.show', $frente->contrato) }}">{{ $frente->contrato->codigo_proceso }}</a></p>
+    <p><a href="{{ route('contratos.show', $frente->contrato) }}">Volver al contrato</a></p>
+    <div class="card ubicacion">
+        <span><small>Entidad</small><strong>{{ $frente->contrato->entidad ?: 'Sin entidad' }}</strong></span>
+        <span><small>Código del proceso</small><strong>{{ $frente->contrato->codigo_proceso }}</strong></span>
+    </div>
     @if (session('estado'))
         <div class="alerta">{{ session('estado') }}</div>
     @endif

@@ -7,6 +7,10 @@
         <a href="{{ route('frentes.show', $ejecucion->rubro->frente) }}">Volver a la planilla</a>
         · <a href="{{ route('impresion.anexo', $ejecucion) }}" target="_blank">Imprimir hoja</a>
     </p>
+    <div class="card ubicacion">
+        <span><small>Entidad</small><strong>{{ $ejecucion->planilla->contrato->entidad ?: 'Sin entidad' }}</strong></span>
+        <span><small>Código del proceso</small><strong>{{ $ejecucion->planilla->contrato->codigo_proceso }}</strong></span>
+    </div>
     @if (session('estado'))
         <div class="alerta">{{ session('estado') }}</div>
     @endif
@@ -64,14 +68,22 @@
         table.hoja[data-hoja] th[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
         table.hoja[data-hoja] td { min-width: 88px; max-width: 160px; }
         table.hoja[data-hoja] td[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
-        table.hoja[data-hoja] th .letra { display: block; font-size: 10px; font-weight: 400; opacity: .75; }
-        table.hoja[data-letras="1"] th .letra { font-size: 15px; font-weight: 700; opacity: 1; letter-spacing: .04em; }
+        table.hoja[data-hoja] th.grupo { letter-spacing: .04em; font-size: 12px; }
+        table.hoja[data-hoja] thead tr:nth-child(2) th { font-size: 11px; font-weight: 600; }
+        table.hoja[data-hoja] td.calc { background: #eef3ea; }
+        table.hoja[data-hoja] td.calc input { background: transparent; }
+        table.hoja[data-hoja] th .letra { display: block; font-size: 15px; font-weight: 700; letter-spacing: .04em; opacity: 1; }
         table.hoja[data-hoja] th input.etiqueta { display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; background: transparent; color: #fff; border: 0; border-bottom: 1px solid rgba(255,255,255,.45); border-radius: 0; text-align: center; padding: 2px 4px; font-weight: 700; }
         table.hoja[data-hoja] th input.formula-col { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
         table.hoja[data-hoja] th .formula-vista { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; opacity: .9; color: #d7e8f8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
         table.hoja[data-hoja] th .formula-vista:empty { display: none; }
-        table.hoja[data-hoja] th button.quitar-col { background: transparent; color: #fff; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
-        table.hoja[data-hoja] th.esquina, table.hoja[data-hoja] td.fila-marca { position: sticky; left: 0; width: 52px; min-width: 52px; max-width: 52px; text-align: center; vertical-align: middle; }
+        table.hoja[data-hoja] th button.quitar-col,
+        table.hoja[data-hoja] th button.insertar-col,
+        table.hoja[data-hoja] td.fila-marca button.insertar-fila { background: transparent; color: #fff; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
+        table.hoja[data-hoja] td.fila-marca button.insertar-fila { color: #1f4e79; }
+        table.hoja[data-hoja] th .cabecera-botones,
+        table.hoja[data-hoja] td.fila-marca { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 2px; }
+        table.hoja[data-hoja] th.esquina, table.hoja[data-hoja] td.fila-marca { position: sticky; left: 0; width: 76px; min-width: 76px; max-width: 76px; text-align: center; vertical-align: middle; }
         table.hoja[data-hoja] th.esquina { z-index: 2; background: #1f4e79; }
         table.hoja[data-hoja] td.fila-marca { z-index: 1; background: #e7eef5; color: #1f4e79; padding: 4px 2px; }
         table.hoja[data-hoja] td.fila-marca .num-fila { display: block; font-weight: 700; font-size: 12px; }
@@ -125,7 +137,7 @@
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}">
         @csrf
         <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
-        <p>@if ($plantillaMedicion !== []) {{ $explicaMedicion }} La primera tabla usa la medición del rubro. @else Escriba la descripción en la columna A y los datos en las demás, como en Excel. @endif Cada tabla muestra la suma de su última columna. <strong>Agregar subtotales</strong> crea otra tabla igual. La cantidad que pasa al frente es la suma de todas.</p>
+        <p>{{ $explicaMedicion }} Puede cambiar el título de cada columna, insertar o quitar columnas y filas. Longitud, área, volumen y total se calculan mientras conserven esa columna. La suma de la última columna de todas las tablas es la cantidad que pasa al frente.</p>
         @foreach ($anexos as $tablaMedicion)
             @include('anexos.tabla', [
                 'anexo' => $tablaMedicion,
