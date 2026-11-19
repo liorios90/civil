@@ -11,10 +11,15 @@ use App\Http\Controllers\FrenteController;
 use App\Http\Controllers\HistorialController;
 use App\Http\Controllers\ImpresionController;
 use App\Http\Controllers\InicioController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\RubroController;
 use App\Http\Controllers\SesionController;
 use App\Http\Controllers\UsuarioController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/', [LandingController::class, 'show'])->name('landing');
+Route::post('/contacto', [LandingController::class, 'contacto'])->middleware('throttle:8,1')->name('landing.contacto');
+Route::redirect('/landing', '/');
 
 Route::middleware('guest')->group(function () {
     Route::get('/ingresar', [SesionController::class, 'crear'])->name('ingresar');
@@ -27,7 +32,7 @@ Route::get('/fiscalizacion/{token}/archivos/{ruta}', [FiscalizacionController::c
 
 Route::middleware(['auth', 'empresa.activa'])->group(function () {
     Route::post('/salir', [SesionController::class, 'salir'])->name('salir');
-    Route::get('/', [InicioController::class, 'index'])->name('inicio');
+    Route::get('/inicio', [InicioController::class, 'index'])->name('inicio');
     Route::get('/perfil', [PerfilController::class, 'edit'])->name('perfil.edit');
     Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
 

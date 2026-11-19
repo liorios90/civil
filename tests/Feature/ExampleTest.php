@@ -14,6 +14,7 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertRedirect('/ingresar');
+        $response->assertOk();
+        $response->assertSee('Ingresar a la plataforma');
     }
 }

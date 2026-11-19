@@ -56,6 +56,6 @@ class SesionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('ingresar');
+        return redirect()->route('landing');
     }
 }
