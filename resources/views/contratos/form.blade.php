@@ -186,7 +186,7 @@
                         <div class="modal-cabeza">
                             <div>
                                 <h2 id="titulo-formulas-rubro">Fórmulas del rubro</h2>
-                                <p data-rubro-nombre>Configure los datos y fórmulas de medición.</p>
+                                <p data-rubro-nombre>Opcional: agregue datos y fórmulas. Si lo deja vacío, en mediciones solo habrá Descripción y Cantidad.</p>
                             </div>
                             <button type="button" class="cerrar-modal" data-cerrar-formulas-rubro title="Cerrar">×</button>
                         </div>
@@ -299,7 +299,7 @@
                     if (nombreRubroModal) {
                         nombreRubroModal.textContent = nombre
                             ? 'Rubro: ' + nombre
-                            : 'Configure los datos y fórmulas de medición.';
+                            : 'Opcional: agregue datos y fórmulas. Si lo deja vacío, en mediciones solo habrá Descripción y Cantidad.';
                     }
                     destinoFormulas.appendChild(panel);
                     modalFormulas.hidden = false;

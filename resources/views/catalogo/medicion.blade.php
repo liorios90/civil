@@ -1,5 +1,5 @@
 <div class="medicion" data-config-panel>
-    <p class="medicion-cabeza"><strong>Fórmulas de medición</strong> <span>Escriba el nombre del dato (altura, base, peso…) y la fórmula con esos nombres, por ejemplo =altura*peso. La última columna con fórmula es el total. También puede dejarlo vacío y usar las fórmulas automáticas según la unidad (m, m², m³).</span></p>
+    <p class="medicion-cabeza"><strong>Fórmulas de medición</strong> <span>Opcional. Si no agrega datos ni fórmulas, en mediciones solo aparecerán Descripción y Cantidad para escribir a mano. Si agrega datos (altura, peso…) y fórmulas (por ejemplo =altura*peso), esas columnas se usan en la hoja. La última columna suele ser el total.</span></p>
     <div data-datos>
         @foreach ($medicion as $j => $dato)
             <div class="dato" data-dato>

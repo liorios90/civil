@@ -48,28 +48,19 @@ class HojaCalculo
      */
     public static function columnasIniciales(string $tipo): array
     {
-        $descripcion = ['clave' => 'descripcion', 'etiqueta' => 'Descripción'];
-        $base1 = ['clave' => 'base1', 'etiqueta' => 'Base 1 (m)'];
-        $base2 = ['clave' => 'base2', 'etiqueta' => 'Base 2 (m)'];
-        $altura = ['clave' => 'altura', 'etiqueta' => 'Altura (m)'];
-        $numero = ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número (u)'];
-        $total = ['clave' => 'total', 'etiqueta' => 'Total'];
+        $descripcion = ['clave' => 'descripcion', 'etiqueta' => 'Descripción', 'formula' => ''];
+        $base1 = ['clave' => 'base1', 'etiqueta' => 'Base 1 (m)', 'formula' => ''];
+        $base2 = ['clave' => 'base2', 'etiqueta' => 'Base 2 (m)', 'formula' => ''];
+        $altura = ['clave' => 'altura', 'etiqueta' => 'Altura (m)', 'formula' => ''];
+        $numero = ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número (u)', 'formula' => ''];
+        $total = ['clave' => 'total', 'etiqueta' => 'Total', 'formula' => ''];
 
-        $formulas = UnidadMedicion::formulasPorDefecto($tipo);
-        $conFormula = static function (array $columna) use ($formulas): array {
-            if (isset($formulas[$columna['clave']])) {
-                $columna['formula'] = $formulas[$columna['clave']];
-            }
-
-            return $columna;
-        };
-
-        $columnas = match ($tipo) {
+        return match ($tipo) {
             UnidadMedicion::LONGITUD => [
                 $descripcion,
                 $base1,
                 $numero,
-                ['clave' => 'longitud', 'etiqueta' => 'Longitud'],
+                ['clave' => 'longitud', 'etiqueta' => 'Longitud', 'formula' => ''],
                 $total,
             ],
             UnidadMedicion::AREA => [
@@ -78,7 +69,7 @@ class HojaCalculo
                 $base2,
                 $altura,
                 $numero,
-                ['clave' => 'area', 'etiqueta' => 'Área'],
+                ['clave' => 'area', 'etiqueta' => 'Área', 'formula' => ''],
                 $total,
             ],
             UnidadMedicion::VOLUMEN, UnidadMedicion::M3KM => [
@@ -87,7 +78,7 @@ class HojaCalculo
                 $base2,
                 $altura,
                 $numero,
-                ['clave' => 'volumen', 'etiqueta' => 'Volumen'],
+                ['clave' => 'volumen', 'etiqueta' => 'Volumen', 'formula' => ''],
                 $total,
             ],
             default => [
@@ -96,8 +87,31 @@ class HojaCalculo
                 $total,
             ],
         };
+    }
 
-        return array_map($conFormula, $columnas);
+    /**
+     * Sin fórmulas del rubro: solo descripción y un dato (cantidad a planilla).
+     *
+     * @return list<array{clave: string, etiqueta: string, formula: string}>
+     */
+    public static function columnasSimples(): array
+    {
+        return [
+            ['clave' => 'descripcion', 'etiqueta' => 'Descripción', 'formula' => ''],
+            ['clave' => 'total', 'etiqueta' => 'Cantidad', 'formula' => ''],
+        ];
+    }
+
+    /**
+     * Plantilla del rubro si tiene datos/fórmulas; si no, hoja simple.
+     *
+     * @return list<array{clave: string, etiqueta: string, formula: string}>
+     */
+    public static function columnasParaMedicion(Rubro $rubro): array
+    {
+        $plantilla = self::plantillaPara($rubro);
+
+        return $plantilla !== [] ? $plantilla : self::columnasSimples();
     }
 
     /**
@@ -150,6 +164,19 @@ class HojaCalculo
     /**
      * @param  list<array<string, mixed>>  $columnas
      */
+    public static function esLayoutPorUnidad(array $columnas, string $tipo): bool
+    {
+        $claves = array_values(array_map(
+            static fn ($columna) => strtolower((string) (is_array($columna) ? ($columna['clave'] ?? '') : '')),
+            $columnas,
+        ));
+
+        return $claves === array_column(self::columnasIniciales($tipo), 'clave');
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $columnas
+     */
     public static function soloLetras(array $columnas): bool
     {
         foreach ($columnas as $columna) {
@@ -176,7 +203,7 @@ class HojaCalculo
     public static function columnas(?array $guardadas, string $tipo): array
     {
         if ($guardadas === null || $guardadas === []) {
-            return self::columnasIniciales($tipo);
+            return self::columnasSimples();
         }
 
         $orden = [];
@@ -204,7 +231,7 @@ class HojaCalculo
     public static function normalizar(?array $orden, array $etiquetas, string $tipo, array $formulas = []): array
     {
         if ($orden === null || $orden === []) {
-            return self::columnasIniciales($tipo);
+            return self::columnasSimples();
         }
 
         $columnas = [];
@@ -217,7 +244,7 @@ class HojaCalculo
             $vistas[$clave] = true;
             $etiqueta = trim((string) ($etiquetas[$clave] ?? ''));
             if ($etiqueta === '') {
-                $etiqueta = $clave === 'total' ? 'Total' : 'Columna';
+                $etiqueta = $clave === 'total' ? 'Cantidad' : 'Columna';
             }
             $columna = ['clave' => $clave, 'etiqueta' => mb_substr($etiqueta, 0, 40)];
             $formula = self::formulaEscrita($formulas[$clave] ?? '');
@@ -230,7 +257,7 @@ class HojaCalculo
             }
         }
 
-        return $columnas === [] ? self::columnasIniciales($tipo) : $columnas;
+        return $columnas === [] ? self::columnasSimples() : $columnas;
     }
 
     /**

@@ -13,16 +13,16 @@
     $plantillaRubro = (isset($plantillaMedicion) && is_array($plantillaMedicion) && $plantillaMedicion !== [])
         ? $plantillaMedicion
         : [];
-    $columnasHoja = $propias
-        ? \App\Services\HojaCalculo::columnas($guardadas, $tipoMedicion)
-        : ($plantillaRubro !== []
-            ? $plantillaRubro
-            : \App\Services\HojaCalculo::columnasIniciales($tipoMedicion));
-    $defaultsFormula = \App\Services\UnidadMedicion::formulasPorDefecto($tipoMedicion);
-    foreach ($columnasHoja as $indiceCol => $columnaVista) {
-        if (trim((string) ($columnaVista['formula'] ?? '')) === '' && isset($defaultsFormula[$columnaVista['clave'] ?? ''])) {
-            $columnasHoja[$indiceCol]['formula'] = $defaultsFormula[$columnaVista['clave']];
-        }
+    if ($plantillaRubro !== []) {
+        $columnasHoja = $propias
+            ? \App\Services\HojaCalculo::columnas($guardadas, $tipoMedicion)
+            : $plantillaRubro;
+    } elseif ($propias
+        && ! \App\Services\HojaCalculo::esLayoutClasicoCompleto($guardadas)
+        && ! \App\Services\HojaCalculo::esLayoutPorUnidad($guardadas, $tipoMedicion)) {
+        $columnasHoja = \App\Services\HojaCalculo::columnas($guardadas, $tipoMedicion);
+    } else {
+        $columnasHoja = \App\Services\HojaCalculo::columnasSimples();
     }
     $filasMedicion = $anexo->lineas->values();
     $totalFilas = max($filasMedicion->count() + 8, 12);

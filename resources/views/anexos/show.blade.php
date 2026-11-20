@@ -158,22 +158,26 @@
         $tipoMedicion = \App\Services\UnidadMedicion::tipo($ejecucion->rubro->unidad);
         $explicaMedicion = \App\Services\UnidadMedicion::explica($tipoMedicion);
         $plantillaMedicion = \App\Services\HojaCalculo::plantillaPara($ejecucion->rubro);
-        $resumenFormulas = $plantillaMedicion !== []
-            ? collect($plantillaMedicion)
-                ->filter(fn ($columna) => ($columna['clave'] ?? '') !== 'descripcion')
-                ->map(fn ($columna) => [
-                    'titulo' => $columna['etiqueta'] ?? $columna['clave'],
-                    'texto' => trim((string) ($columna['formula'] ?? '')) !== ''
-                        ? $columna['formula']
-                        : 'Se escribe a mano',
-                ])
-                ->values()
-                ->all()
-            : \App\Services\UnidadMedicion::resumenFormulas($tipoMedicion);
+        $columnasBase = \App\Services\HojaCalculo::columnasParaMedicion($ejecucion->rubro);
+        $resumenFormulas = collect($columnasBase)
+            ->filter(fn ($columna) => ($columna['clave'] ?? '') !== 'descripcion')
+            ->map(fn ($columna) => [
+                'titulo' => $columna['etiqueta'] ?? $columna['clave'],
+                'texto' => trim((string) ($columna['formula'] ?? '')) !== ''
+                    ? $columna['formula']
+                    : 'Se escribe a mano',
+            ])
+            ->values()
+            ->all();
+        $sinFormulasRubro = $plantillaMedicion === [];
     @endphp
     <div class="panel-formulas">
         <h2>Fórmulas de este rubro</h2>
-        <p>{{ $explicaMedicion }} Unidad: <b>{{ $ejecucion->rubro->unidad }}</b>. Puede cambiarlas con el botón «Ver / cambiar fórmulas» de cada tabla y luego Guardar mediciones.</p>
+        @if ($sinFormulasRubro)
+            <p>Este rubro no tiene fórmulas. En mediciones solo aparecen <b>Descripción</b> y <b>Cantidad</b>. Unidad: <b>{{ $ejecucion->rubro->unidad }}</b>. Puede agregar fórmulas con «Ver / cambiar fórmulas» y luego Guardar mediciones.</p>
+        @else
+            <p>{{ $explicaMedicion }} Unidad: <b>{{ $ejecucion->rubro->unidad }}</b>. Puede cambiarlas con el botón «Ver / cambiar fórmulas» de cada tabla y luego Guardar mediciones.</p>
+        @endif
         <ul>
             @foreach ($resumenFormulas as $formula)
                 <li>
@@ -186,7 +190,7 @@
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}">
         @csrf
         <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
-        <p>Las columnas salen según la unidad del rubro. Puede cambiar títulos e insertar o quitar columnas y filas. Al guardar mediciones se conservan también las fórmulas de esta hoja. La suma de la última columna de todas las tablas es la cantidad que pasa al frente.</p>
+        <p>Si el rubro no tiene fórmulas, la hoja trae solo descripción y cantidad. Con fórmulas, usa esas columnas. Puede cambiar títulos e insertar o quitar columnas y filas. Al guardar se conservan las fórmulas de esta hoja. La suma de la última columna de todas las tablas es la cantidad que pasa al frente.</p>
         @foreach ($anexos as $tablaMedicion)
             @include('anexos.tabla', [
                 'anexo' => $tablaMedicion,

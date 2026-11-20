@@ -20,8 +20,8 @@ class HojaCalculoTest extends TestCase
             array_column(HojaCalculo::columnasIniciales(UnidadMedicion::AREA), 'clave'),
         );
         $area = collect(HojaCalculo::columnasIniciales(UnidadMedicion::AREA))->keyBy('clave');
-        $this->assertSame('=base1*base2*numero', $area['area']['formula']);
-        $this->assertSame('=area', $area['total']['formula']);
+        $this->assertSame('', $area['area']['formula']);
+        $this->assertSame('', $area['total']['formula']);
         $this->assertSame(
             ['descripcion', 'base1', 'base2', 'altura', 'numero', 'volumen', 'total'],
             array_column(HojaCalculo::columnasIniciales(UnidadMedicion::VOLUMEN), 'clave'),
@@ -29,6 +29,14 @@ class HojaCalculoTest extends TestCase
         $this->assertSame(
             ['descripcion', 'numero', 'total'],
             array_column(HojaCalculo::columnasIniciales(UnidadMedicion::NUMERO), 'clave'),
+        );
+        $this->assertSame(
+            ['descripcion', 'total'],
+            array_column(HojaCalculo::columnasSimples(), 'clave'),
+        );
+        $this->assertSame(
+            ['descripcion', 'total'],
+            array_column(HojaCalculo::columnasParaMedicion(new Rubro(['descripcion' => 'Sin fórmulas'])), 'clave'),
         );
         $this->assertTrue(HojaCalculo::esLayoutClasicoCompleto(array_map(
             static fn (string $clave) => ['clave' => $clave],
