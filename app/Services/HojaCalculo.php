@@ -24,6 +24,9 @@ class HojaCalculo
     /** @var list<string> */
     private array $etiquetas;
 
+    /** @var list<string> */
+    private array $formulas;
+
     private int $filaFormula = 0;
 
     private string $src = '';
@@ -39,21 +42,62 @@ class HojaCalculo
     private bool $ciclo = false;
 
     /**
+     * Columnas según la unidad del rubro: solo pide lo necesario para esa fórmula.
+     *
      * @return list<array{clave: string, etiqueta: string}>
      */
     public static function columnasIniciales(string $tipo): array
     {
-        return [
-            ['clave' => 'descripcion', 'etiqueta' => 'Descripción'],
-            ['clave' => 'base1', 'etiqueta' => 'Base 1 (m)'],
-            ['clave' => 'base2', 'etiqueta' => 'Base 2 (m)'],
-            ['clave' => 'altura', 'etiqueta' => 'Altura (m)'],
-            ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número (u)'],
-            ['clave' => 'longitud', 'etiqueta' => 'Longitud'],
-            ['clave' => 'area', 'etiqueta' => 'Área'],
-            ['clave' => 'volumen', 'etiqueta' => 'Volumen'],
-            ['clave' => 'total', 'etiqueta' => 'Total'],
-        ];
+        $descripcion = ['clave' => 'descripcion', 'etiqueta' => 'Descripción'];
+        $base1 = ['clave' => 'base1', 'etiqueta' => 'Base 1 (m)'];
+        $base2 = ['clave' => 'base2', 'etiqueta' => 'Base 2 (m)'];
+        $altura = ['clave' => 'altura', 'etiqueta' => 'Altura (m)'];
+        $numero = ['clave' => 'numero', 'etiqueta' => $tipo === UnidadMedicion::M3KM ? 'Km' : 'Número (u)'];
+        $total = ['clave' => 'total', 'etiqueta' => 'Total'];
+
+        $formulas = UnidadMedicion::formulasPorDefecto($tipo);
+        $conFormula = static function (array $columna) use ($formulas): array {
+            if (isset($formulas[$columna['clave']])) {
+                $columna['formula'] = $formulas[$columna['clave']];
+            }
+
+            return $columna;
+        };
+
+        $columnas = match ($tipo) {
+            UnidadMedicion::LONGITUD => [
+                $descripcion,
+                $base1,
+                $numero,
+                ['clave' => 'longitud', 'etiqueta' => 'Longitud'],
+                $total,
+            ],
+            UnidadMedicion::AREA => [
+                $descripcion,
+                $base1,
+                $base2,
+                $altura,
+                $numero,
+                ['clave' => 'area', 'etiqueta' => 'Área'],
+                $total,
+            ],
+            UnidadMedicion::VOLUMEN, UnidadMedicion::M3KM => [
+                $descripcion,
+                $base1,
+                $base2,
+                $altura,
+                $numero,
+                ['clave' => 'volumen', 'etiqueta' => 'Volumen'],
+                $total,
+            ],
+            default => [
+                $descripcion,
+                $numero,
+                $total,
+            ],
+        };
+
+        return array_map($conFormula, $columnas);
     }
 
     /**
@@ -88,6 +132,19 @@ class HojaCalculo
         }
 
         return true;
+    }
+
+    /**
+     * Plantilla antigua con las 9 columnas fijas (antes de adaptar por unidad).
+     *
+     * @param  list<array<string, mixed>>  $columnas
+     */
+    public static function esLayoutClasicoCompleto(array $columnas): bool
+    {
+        return array_values(array_map(
+            static fn ($columna) => strtolower((string) (is_array($columna) ? ($columna['clave'] ?? '') : '')),
+            $columnas,
+        )) === self::FIJAS;
     }
 
     /**
@@ -192,10 +249,12 @@ class HojaCalculo
         }
 
         $etiquetas = [];
+        $formulas = [];
         foreach ($columnas as $columna) {
             $etiquetas[] = (string) ($columna['etiqueta'] ?? '');
+            $formulas[] = self::formulaEscrita($columna['formula'] ?? '');
         }
-        $motor = new self($crudas, $claves, $val, $tipo, $etiquetas);
+        $motor = new self($crudas, $claves, $val, $tipo, $etiquetas, $formulas);
         for ($pasada = 0; $pasada < 12; $pasada++) {
             $antes = $val;
             foreach ($crudas as $r => $fila) {
@@ -261,6 +320,7 @@ class HojaCalculo
                 $clave = $columna['clave'];
                 if ($clave === 'descripcion') {
                     $fila[$clave] = $resuelta['descripcion'];
+
                     continue;
                 }
                 $numero = $resuelta['numeros'][$clave] ?? null;
@@ -568,14 +628,16 @@ class HojaCalculo
      * @param  list<string>  $claves
      * @param  array<int, array<string, ?float>>  $val
      * @param  list<string>  $etiquetas
+     * @param  list<string>  $formulas
      */
-    private function __construct(array $raw, array $claves, array $val, string $tipo, array $etiquetas = [])
+    private function __construct(array $raw, array $claves, array $val, string $tipo, array $etiquetas = [], array $formulas = [])
     {
         $this->raw = $raw;
         $this->claves = $claves;
         $this->val = $val;
         $this->tipo = $tipo;
         $this->etiquetas = $etiquetas;
+        $this->formulas = $formulas;
     }
 
     public function valorDe(int $fila, int $col): ?float
@@ -606,6 +668,16 @@ class HojaCalculo
         }
 
         $texto = trim((string) ($this->raw[$fila][$clave] ?? ''));
+        if ($texto === '') {
+            $auto = self::automatico($clave, $this->val[$fila] ?? [], $this->tipo);
+            if ($auto !== null) {
+                return $auto;
+            }
+            $formulaColumna = $this->formulas[$col] ?? '';
+            if ($formulaColumna !== '') {
+                $texto = self::formulaEnFila($formulaColumna, $fila + 1);
+            }
+        }
         if (str_starts_with($texto, '=')) {
             $this->pila[$marca] = true;
             $src = $this->src;
@@ -637,10 +709,6 @@ class HojaCalculo
         $actual = $this->val[$fila][$clave] ?? null;
         if ($actual !== null) {
             return (float) $actual;
-        }
-        $auto = self::automatico($clave, $this->val[$fila] ?? [], $this->tipo);
-        if ($auto !== null) {
-            return $auto;
         }
 
         return $enFormula ? 0.0 : null;
@@ -822,6 +890,7 @@ class HojaCalculo
             $sep = $this->src[$this->i] ?? '';
             if ($sep === ',' || $sep === ';') {
                 $this->i++;
+
                 continue;
             }
             break;
@@ -852,6 +921,7 @@ class HojaCalculo
                 for ($c = min($c1, $c2); $c <= max($c1, $c2); $c++) {
                     if ($r < 0 || $c < 0 || $r >= count($this->raw) || $c >= count($this->claves)) {
                         $numeros[] = 0.0;
+
                         continue;
                     }
                     $referida = $this->leer($r, $c, true);
@@ -891,22 +961,34 @@ class HojaCalculo
         $mejor = null;
         $mejorLargo = 0;
         foreach ($this->etiquetas as $columna => $etiqueta) {
-            $etiqueta = trim($etiqueta);
-            if ($etiqueta === '' || str_starts_with($etiqueta, '=')) {
-                continue;
+            $nombres = [];
+            $etiqueta = trim((string) $etiqueta);
+            if ($etiqueta !== '' && ! str_starts_with($etiqueta, '=')) {
+                $nombres[] = $etiqueta;
+                $sinUnidad = trim((string) preg_replace('/\s*\([^)]*\)\s*/u', ' ', $etiqueta));
+                $sinUnidad = trim((string) preg_replace('/\s+/u', ' ', $sinUnidad));
+                if ($sinUnidad !== '' && $sinUnidad !== $etiqueta) {
+                    $nombres[] = $sinUnidad;
+                }
             }
-            $patron = self::patronNombre($etiqueta);
-            if ($patron === '' || ! preg_match('/\A'.$patron.'/iu', $resto, $coincidencia)) {
-                continue;
+            $clave = (string) ($this->claves[$columna] ?? '');
+            if ($clave !== '' && $clave !== 'descripcion') {
+                $nombres[] = $clave;
             }
-            $largo = strlen($coincidencia[0]);
-            $siguiente = $resto[$largo] ?? '';
-            if ($siguiente === '(' || ($siguiente !== '' && preg_match('/[A-Za-z0-9_]/', $siguiente))) {
-                continue;
-            }
-            if ($largo > $mejorLargo) {
-                $mejorLargo = $largo;
-                $mejor = $columna;
+            foreach (array_unique($nombres) as $nombre) {
+                $patron = self::patronNombre($nombre);
+                if ($patron === '' || ! preg_match('/\A'.$patron.'/iu', $resto, $coincidencia)) {
+                    continue;
+                }
+                $largo = strlen($coincidencia[0]);
+                $siguiente = $resto[$largo] ?? '';
+                if ($siguiente === '(' || ($siguiente !== '' && preg_match('/[A-Za-z0-9_]/', $siguiente))) {
+                    continue;
+                }
+                if ($largo > $mejorLargo) {
+                    $mejorLargo = $largo;
+                    $mejor = $columna;
+                }
             }
         }
         if ($mejor === null) {

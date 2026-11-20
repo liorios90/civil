@@ -47,7 +47,8 @@ class RubrosExcel
                 'descripcion' => $texto,
                 'unidad' => mb_substr(trim((string) ($fila[$unidad] ?? '')), 0, 20),
                 'precio_unitario' => $this->numero($fila[$precio] ?? 0),
-                'cantidad_contratada' => $cantidad === null ? 0 : $this->numero($fila[$cantidad] ?? 0),
+                // Sin columna Cantidad, se asume 1 para que el rubro entre a la planilla y a mediciones.
+                'cantidad_contratada' => $cantidad === null ? 1.0 : $this->numero($fila[$cantidad] ?? 0),
             ];
             if ($numero !== null && (int) ($fila[$numero] ?? 0) > 0) {
                 $item['numero'] = (int) $fila[$numero];

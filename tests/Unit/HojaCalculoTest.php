@@ -2,29 +2,59 @@
 
 namespace Tests\Unit;
 
+use App\Models\Rubro;
 use App\Services\HojaCalculo;
 use App\Services\UnidadMedicion;
 use Tests\TestCase;
 
 class HojaCalculoTest extends TestCase
 {
+    public function test_columnas_iniciales_segun_unidad_del_rubro(): void
+    {
+        $this->assertSame(
+            ['descripcion', 'base1', 'numero', 'longitud', 'total'],
+            array_column(HojaCalculo::columnasIniciales(UnidadMedicion::LONGITUD), 'clave'),
+        );
+        $this->assertSame(
+            ['descripcion', 'base1', 'base2', 'altura', 'numero', 'area', 'total'],
+            array_column(HojaCalculo::columnasIniciales(UnidadMedicion::AREA), 'clave'),
+        );
+        $area = collect(HojaCalculo::columnasIniciales(UnidadMedicion::AREA))->keyBy('clave');
+        $this->assertSame('=base1*base2*numero', $area['area']['formula']);
+        $this->assertSame('=area', $area['total']['formula']);
+        $this->assertSame(
+            ['descripcion', 'base1', 'base2', 'altura', 'numero', 'volumen', 'total'],
+            array_column(HojaCalculo::columnasIniciales(UnidadMedicion::VOLUMEN), 'clave'),
+        );
+        $this->assertSame(
+            ['descripcion', 'numero', 'total'],
+            array_column(HojaCalculo::columnasIniciales(UnidadMedicion::NUMERO), 'clave'),
+        );
+        $this->assertTrue(HojaCalculo::esLayoutClasicoCompleto(array_map(
+            static fn (string $clave) => ['clave' => $clave],
+            HojaCalculo::FIJAS,
+        )));
+        $this->assertFalse(HojaCalculo::esLayoutClasicoCompleto(
+            HojaCalculo::columnasIniciales(UnidadMedicion::AREA),
+        ));
+    }
+
     public function test_calcula_formulas_y_mantiene_el_total_automatico(): void
     {
         $columnas = HojaCalculo::columnasIniciales(UnidadMedicion::AREA);
         $filas = [
             $this->fila(['base1' => '3', 'base2' => '4', 'numero' => '2']),
-            $this->fila(['base1' => '1', 'numero' => '5', 'total' => '=I1*2']),
-            $this->fila(['base1' => '10', 'longitud' => '9', 'numero' => '1']),
+            $this->fila(['base1' => '1', 'numero' => '5', 'total' => '=G1*2']),
+            $this->fila(['base1' => '5', 'altura' => '2', 'numero' => '1']),
         ];
 
         $res = HojaCalculo::resolver($filas, $columnas, UnidadMedicion::AREA);
 
-        $this->assertEquals(6, $res[0]['numeros']['longitud']);
         $this->assertEquals(24, $res[0]['numeros']['area']);
         $this->assertEquals(24, $res[0]['numeros']['total']);
         $this->assertEquals(48, $res[1]['numeros']['total']);
-        $this->assertEquals(9, $res[2]['numeros']['longitud']);
-        $this->assertSame('=I1*2', $res[1]['celdas']['total']);
+        $this->assertEquals(10, $res[2]['numeros']['area']);
+        $this->assertSame('=G1*2', $res[1]['celdas']['total']);
     }
 
     public function test_la_plantilla_de_medicion_usa_nombres_y_descripcion(): void
@@ -78,14 +108,19 @@ class HojaCalculoTest extends TestCase
     public function test_la_formula_de_la_columna_se_guarda_y_completa_las_filas(): void
     {
         $columnas = HojaCalculo::normalizar(
-            ['descripcion', 'e0', 'total'],
-            ['descripcion' => 'Descripción', 'e0' => 'altura', 'total' => 'Total'],
+            ['descripcion', 'e0', 'e1', 'total'],
+            ['descripcion' => 'Descripción', 'e0' => 'altura', 'e1' => 'peso', 'total' => 'Total'],
             UnidadMedicion::NUMERO,
             ['total' => 'altura*peso'],
         );
 
-        $this->assertSame('=altura*peso', $columnas[2]['formula']);
-        $this->assertSame('=altura*peso', HojaCalculo::columnas($columnas, UnidadMedicion::NUMERO)[2]['formula']);
+        $this->assertSame('=altura*peso', $columnas[3]['formula']);
+        $this->assertSame('=altura*peso', HojaCalculo::columnas($columnas, UnidadMedicion::NUMERO)[3]['formula']);
+
+        $calculado = HojaCalculo::resolver([
+            ['descripcion' => 'fila', 'e0' => '5', 'e1' => '4', 'total' => ''],
+        ], $columnas, UnidadMedicion::NUMERO);
+        $this->assertEquals(20, $calculado[0]['numeros']['total']);
 
         $sinFormula = [
             ['clave' => 'descripcion', 'etiqueta' => 'Descripción'],
@@ -114,7 +149,7 @@ class HojaCalculoTest extends TestCase
 
     public function test_la_medicion_del_rubro_no_consulta_el_catalogo_general(): void
     {
-        $rubro = new \App\Models\Rubro([
+        $rubro = new Rubro([
             'descripcion' => 'Excavación',
             'medicion' => [
                 ['etiqueta' => 'altura', 'formula' => ''],
@@ -126,7 +161,7 @@ class HojaCalculoTest extends TestCase
 
         $this->assertSame('descripcion', $columnas[0]['clave']);
         $this->assertSame('=altura*2', $columnas[2]['formula']);
-        $this->assertSame([], HojaCalculo::plantillaPara(new \App\Models\Rubro(['descripcion' => 'Excavación'])));
+        $this->assertSame([], HojaCalculo::plantillaPara(new Rubro(['descripcion' => 'Excavación'])));
     }
 
     public function test_acepta_suma_promedio_y_referencia_circular(): void

@@ -79,12 +79,13 @@
         return patron;
     };
 
-    function Motor(crudas, claves, val, tipo, etiquetas) {
+    function Motor(crudas, claves, val, tipo, etiquetas, formulas) {
         this.crudas = crudas;
         this.claves = claves;
         this.val = val;
         this.tipo = tipo;
         this.etiquetas = etiquetas || [];
+        this.formulas = formulas || [];
         this.filaFormula = 0;
         this.src = '';
         this.i = 0;
@@ -113,7 +114,12 @@
         }
         const clave = this.claves[col];
         if (!clave || clave === 'descripcion') return enFormula ? 0 : null;
-        const texto = String(this.crudas[fila][clave] || '').trim();
+        let texto = String(this.crudas[fila][clave] || '').trim();
+        if (texto === '') {
+            const auto = automatico(clave, this.val[fila] || {}, this.tipo);
+            if (auto != null) return auto;
+            if (this.formulas[col]) texto = formulaEnFila(this.formulas[col], fila + 1);
+        }
         if (texto.startsWith('=')) {
             this.pila[marca] = true;
             const src = this.src;
@@ -139,8 +145,6 @@
         }
         const actual = this.val[fila][clave];
         if (actual != null) return actual;
-        const auto = automatico(clave, this.val[fila] || {}, this.tipo);
-        if (auto != null) return auto;
         return enFormula ? 0 : null;
     };
 
@@ -292,17 +296,26 @@
         let mejor = null;
         let mejorLargo = 0;
         this.etiquetas.forEach((etiqueta, columna) => {
-            const nombre = String(etiqueta || '').trim();
-            if (!nombre || nombre.startsWith('=')) return;
-            const coincidencia = resto.match(new RegExp('^' + patronNombre(nombre), 'i'));
-            if (!coincidencia) return;
-            const largo = coincidencia[0].length;
-            const siguiente = resto[largo] || '';
-            if (siguiente === '(' || /[A-Za-z0-9_]/.test(siguiente)) return;
-            if (largo > mejorLargo) {
-                mejorLargo = largo;
-                mejor = columna;
+            const nombres = [];
+            const titulo = String(etiqueta || '').trim();
+            if (titulo && !titulo.startsWith('=')) {
+                nombres.push(titulo);
+                const sinUnidad = titulo.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+                if (sinUnidad && sinUnidad !== titulo) nombres.push(sinUnidad);
             }
+            const clave = String(this.claves[columna] || '');
+            if (clave && clave !== 'descripcion') nombres.push(clave);
+            [...new Set(nombres)].forEach((nombre) => {
+                const coincidencia = resto.match(new RegExp('^' + patronNombre(nombre), 'i'));
+                if (!coincidencia) return;
+                const largo = coincidencia[0].length;
+                const siguiente = resto[largo] || '';
+                if (siguiente === '(' || /[A-Za-z0-9_]/.test(siguiente)) return;
+                if (largo > mejorLargo) {
+                    mejorLargo = largo;
+                    mejor = columna;
+                }
+            });
         });
         if (mejor == null) return null;
         this.i += mejorLargo;
@@ -321,9 +334,9 @@
         return null;
     };
 
-    const resolver = (crudas, claves, tipo, etiquetas) => {
+    const resolver = (crudas, claves, tipo, etiquetas, formulas) => {
         let val = crudas.map(() => Object.fromEntries(claves.map((clave) => [clave, null])));
-        const motor = new Motor(crudas, claves, val, tipo, etiquetas);
+        const motor = new Motor(crudas, claves, val, tipo, etiquetas, formulas);
         for (let pasada = 0; pasada < 12; pasada += 1) {
             const antes = JSON.stringify(val);
             const siguiente = val.map((fila) => ({ ...fila }));
@@ -362,7 +375,8 @@
             return;
         }
         input.classList.remove('malo');
-        const calculada = ['longitud', 'area', 'volumen', 'total'].includes(td?.dataset.clave || '');
+        const clave = td?.dataset.clave || '';
+        const calculada = ['longitud', 'area', 'volumen', 'total'].includes(clave) || !!input.dataset.formulaCol;
         if (raw === '' && calculada) {
             input.value = valor == null ? '' : texto(valor);
             if (td) td.classList.add('calc');
@@ -372,17 +386,31 @@
         input.value = raw;
     };
 
+    const formulasPorClave = (tabla) => {
+        const mapa = {};
+        tabla.querySelectorAll('thead th[data-clave]').forEach((th) => {
+            const formula = normalizarFormula(th.querySelector('.formula-col')?.value || th.dataset.formula || '');
+            if (formula) mapa[th.dataset.clave] = formula;
+        });
+        return mapa;
+    };
+
     const recalcular = (tabla, conAutomaticos) => {
         const claves = columnasDe(tabla);
-        const etiquetas = [...tabla.querySelectorAll('thead th .etiqueta')].map((input) => input.value);
+        const etiquetas = [...tabla.querySelectorAll('thead th[data-clave] .etiqueta')].map((input) => input.value);
+        const formulasMapa = formulasPorClave(tabla);
+        const formulas = claves.map((clave) => formulasMapa[clave] || '');
         const crudas = crudasDe(tabla);
-        const valores = resolver(crudas, claves, tabla.dataset.tipo || 'numero', etiquetas);
+        const valores = resolver(crudas, claves, tabla.dataset.tipo || 'numero', etiquetas, formulas);
         [...tabla.tBodies[0].rows].forEach((tr, r) => {
             tr.querySelectorAll('td').forEach((td) => {
                 const input = td.querySelector('.celda');
                 if (!input || input.dataset.texto) return;
                 const raw = input.dataset.raw || '';
-                if (!conAutomaticos && !raw.startsWith('=')) return;
+                const tieneFormulaCol = !!formulasMapa[td.dataset.clave];
+                if (tieneFormulaCol) input.dataset.formulaCol = '1';
+                else delete input.dataset.formulaCol;
+                if (!conAutomaticos && !raw.startsWith('=') && !tieneFormulaCol) return;
                 pintar(input, raw, valores[r][td.dataset.clave]);
             });
         });
@@ -557,6 +585,7 @@
     const crearEncabezado = (clave, etiqueta, soloLetra, prefijo) => {
         const th = document.createElement('th');
         th.dataset.clave = clave;
+        th.dataset.formula = '';
         const orden = document.createElement('input');
         orden.type = 'hidden';
         orden.name = (prefijo || '') + '[orden_columnas][]';
@@ -569,7 +598,15 @@
         nombre.value = etiqueta;
         nombre.maxLength = 40;
         nombre.autocomplete = 'off';
-        th.append(orden, marca, nombre);
+        const formula = document.createElement('input');
+        formula.type = 'hidden';
+        formula.className = 'formula-col';
+        formula.name = (prefijo || '') + '[formulas][' + clave + ']';
+        formula.value = '';
+        formula.dataset.anterior = '';
+        const vista = document.createElement('span');
+        vista.className = 'formula-vista';
+        th.append(orden, marca, nombre, formula, vista);
         const acciones = document.createElement('span');
         acciones.className = 'cabecera-botones';
         const insertar = document.createElement('button');

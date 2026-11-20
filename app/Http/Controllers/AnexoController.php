@@ -49,10 +49,11 @@ class AnexoController extends Controller
         $this->asegurarEditable($ejecucion);
         $ejecucion->anexos()->firstOrCreate(['hoja' => 1], ['tipo' => 'geometrico']);
         $siguiente = ((int) $ejecucion->anexos()->max('hoja')) + 1;
+        $tipo = UnidadMedicion::tipo($ejecucion->rubro->unidad);
         $ejecucion->anexos()->create([
             'hoja' => $siguiente,
             'tipo' => 'geometrico',
-            'columnas' => HojaCalculo::columnasExcel(),
+            'columnas' => HojaCalculo::columnasIniciales($tipo),
         ]);
 
         return redirect()->route('anexos.show', $ejecucion)->with('estado', 'Tabla de subtotal agregada.');

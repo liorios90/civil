@@ -46,12 +46,72 @@ class UnidadMedicion
     public static function explica(string $tipo): string
     {
         return match ($tipo) {
-            self::LONGITUD => 'El total es la longitud. Puede corregir ese valor.',
-            self::AREA => 'El total es el área. Puede corregir ese valor.',
-            self::VOLUMEN => 'El total es el volumen. Puede corregir ese valor.',
-            self::KILOGRAMO => 'El total es el peso en kilogramos. Escríbalo en Número o corríjalo en Total.',
-            self::M3KM => 'El total es el volumen por los kilómetros. El número es la distancia en km y puede corregir el volumen.',
-            default => 'El total es el número. Puede corregirlo en Total.',
+            self::LONGITUD => 'Unidad de longitud (m). Complete Base 1 y Número; Longitud y Total se calculan solos.',
+            self::AREA => 'Unidad de área (m²). Complete Base 1, Base 2 o Altura y Número; Área y Total se calculan solos.',
+            self::VOLUMEN => 'Unidad de volumen (m³). Complete Base 1, Base 2, Altura y Número; Volumen y Total se calculan solos.',
+            self::KILOGRAMO => 'Unidad en kilogramos. Escriba el peso en Número; el Total se completa solo.',
+            self::M3KM => 'Unidad m³·km. Complete las bases, Altura y Km; Volumen × Km da el Total.',
+            default => 'Unidad por cantidad. Escriba el valor en Número; el Total se completa solo.',
+        };
+    }
+
+    /**
+     * Fórmulas por defecto según la unidad (para mostrar y editar en la hoja).
+     *
+     * @return array<string, string>
+     */
+    public static function formulasPorDefecto(string $tipo): array
+    {
+        return match ($tipo) {
+            self::LONGITUD => [
+                'longitud' => '=base1*numero',
+                'total' => '=longitud',
+            ],
+            self::AREA => [
+                'area' => '=base1*base2*numero',
+                'total' => '=area',
+            ],
+            self::VOLUMEN => [
+                'volumen' => '=base1*base2*altura*numero',
+                'total' => '=volumen',
+            ],
+            self::M3KM => [
+                'volumen' => '=base1*base2*altura',
+                'total' => '=volumen*numero',
+            ],
+            default => [
+                'total' => '=numero',
+            ],
+        };
+    }
+
+    /**
+     * Resumen legible de las fórmulas activas.
+     *
+     * @return list<array{titulo: string, texto: string}>
+     */
+    public static function resumenFormulas(string $tipo): array
+    {
+        return match ($tipo) {
+            self::LONGITUD => [
+                ['titulo' => 'Longitud', 'texto' => 'Base 1 × Número'],
+                ['titulo' => 'Total', 'texto' => 'Longitud'],
+            ],
+            self::AREA => [
+                ['titulo' => 'Área', 'texto' => 'Base 1 × Base 2 × Número (o Base 1 × Altura × Número)'],
+                ['titulo' => 'Total', 'texto' => 'Área'],
+            ],
+            self::VOLUMEN => [
+                ['titulo' => 'Volumen', 'texto' => 'Base 1 × Base 2 × Altura × Número'],
+                ['titulo' => 'Total', 'texto' => 'Volumen'],
+            ],
+            self::M3KM => [
+                ['titulo' => 'Volumen', 'texto' => 'Base 1 × Base 2 × Altura'],
+                ['titulo' => 'Total', 'texto' => 'Volumen × Km'],
+            ],
+            default => [
+                ['titulo' => 'Total', 'texto' => 'Número'],
+            ],
         };
     }
 

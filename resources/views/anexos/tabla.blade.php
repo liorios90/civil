@@ -1,16 +1,29 @@
 @php
     $guardadas = is_array($anexo->columnas) ? $anexo->columnas : [];
-    $propias = $guardadas !== [] && collect($guardadas)->every(function ($columna) {
-        if (! is_array($columna) || trim((string) ($columna['formula'] ?? '')) !== '') {
-            return false;
-        }
-        $clave = strtolower((string) ($columna['clave'] ?? ''));
+    $propias = $guardadas !== []
+        && ! \App\Services\HojaCalculo::esLayoutClasicoCompleto($guardadas)
+        && collect($guardadas)->every(function ($columna) {
+            if (! is_array($columna)) {
+                return false;
+            }
+            $clave = strtolower((string) ($columna['clave'] ?? ''));
 
-        return in_array($clave, \App\Services\HojaCalculo::FIJAS, true) || preg_match('/^c[a-z0-9]+$/', $clave) === 1;
-    });
+            return in_array($clave, \App\Services\HojaCalculo::FIJAS, true) || preg_match('/^c[a-z0-9]+$/', $clave) === 1;
+        });
+    $plantillaRubro = (isset($plantillaMedicion) && is_array($plantillaMedicion) && $plantillaMedicion !== [])
+        ? $plantillaMedicion
+        : [];
     $columnasHoja = $propias
         ? \App\Services\HojaCalculo::columnas($guardadas, $tipoMedicion)
-        : \App\Services\HojaCalculo::columnasIniciales($tipoMedicion);
+        : ($plantillaRubro !== []
+            ? $plantillaRubro
+            : \App\Services\HojaCalculo::columnasIniciales($tipoMedicion));
+    $defaultsFormula = \App\Services\UnidadMedicion::formulasPorDefecto($tipoMedicion);
+    foreach ($columnasHoja as $indiceCol => $columnaVista) {
+        if (trim((string) ($columnaVista['formula'] ?? '')) === '' && isset($defaultsFormula[$columnaVista['clave'] ?? ''])) {
+            $columnasHoja[$indiceCol]['formula'] = $defaultsFormula[$columnaVista['clave']];
+        }
+    }
     $filasMedicion = $anexo->lineas->values();
     $totalFilas = max($filasMedicion->count() + 8, 12);
     $prefijo = 'tablas['.$anexo->id.']';
@@ -25,6 +38,9 @@
         @endif
     </div>
     <p class="acciones">
+        @if ($periodoAbierto)
+            <button type="button" class="secundario" data-abrir-formulas>Ver / cambiar fórmulas</button>
+        @endif
         <button type="button" class="secundario" data-agregar-columna>Agregar columna</button>
         <button type="button" class="secundario" data-agregar-fila>Agregar fila</button>
     </p>
@@ -34,10 +50,15 @@
                 <tr>
                     <th class="esquina"></th>
                     @foreach ($columnasHoja as $indice => $columna)
-                        <th data-clave="{{ $columna['clave'] }}">
+                        @php
+                            $formulaCol = trim((string) ($columna['formula'] ?? ''));
+                        @endphp
+                        <th data-clave="{{ $columna['clave'] }}" data-formula="{{ $formulaCol }}">
                             <span class="letra">{{ \App\Services\HojaCalculo::letra($indice) }}</span>
                             <input type="hidden" name="{{ $prefijo }}[orden_columnas][]" value="{{ $columna['clave'] }}">
                             <input class="etiqueta" name="{{ $prefijo }}[etiquetas][{{ $columna['clave'] }}]" value="{{ $columna['etiqueta'] }}" maxlength="40" autocomplete="off" title="Título de la columna">
+                            <input type="hidden" class="formula-col" name="{{ $prefijo }}[formulas][{{ $columna['clave'] }}]" value="{{ $formulaCol }}" data-anterior="{{ $formulaCol }}">
+                            <span class="formula-vista">{{ $formulaCol }}</span>
                             <span class="cabecera-botones">
                                 <button type="button" class="insertar-col" title="Insertar columna a la derecha">+</button>
                                 <button type="button" class="quitar-col" title="Quitar columna">×</button>

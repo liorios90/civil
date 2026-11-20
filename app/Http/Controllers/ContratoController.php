@@ -163,10 +163,10 @@ class ContratoController extends Controller
         $contrato->update($this->datos($request));
         $contrato->planillas()->update(['iva_porcentaje' => $contrato->iva_porcentaje]);
         if ($request->exists('filas') || $request->hasFile('rubros_excel')) {
-            $catalogo->aplicarCatalogo($contrato, $this->filasContrato($request), false);
+            $catalogo->aplicarCatalogo($contrato, $this->filasContrato($request), true, true);
         }
 
-        return redirect()->route('contratos.show', $contrato)->with('estado', 'Contrato actualizado.');
+        return redirect()->route('contratos.show', $contrato)->with('estado', 'Contrato actualizado. Los rubros con cantidad quedaron en la última planilla para mediciones.');
     }
 
     public function importarRubros(Request $request, Contrato $contrato, FrenteRubros $catalogo, RubrosExcel $lector)
@@ -178,13 +178,13 @@ class ContratoController extends Controller
         $filas = $lector->leer($request->file('rubros_excel'));
         if ($filas === []) {
             return back()->withErrors([
-                'rubros_excel' => 'El Excel no tiene rubros. La primera fila debe decir Descripción, Unidad y Precio unitario.',
+                'rubros_excel' => 'El Excel no tiene rubros. La primera fila debe decir Descripción, Unidad, Cantidad y Precio unitario.',
             ]);
         }
 
-        $catalogo->aplicarCatalogo($contrato, $filas, false);
+        $catalogo->aplicarCatalogo($contrato, $filas, true, true);
 
-        return redirect()->route('contratos.edit', $contrato)->with('estado', count($filas).' rubros cargados desde Excel. Pertenecen solo a este contrato.');
+        return redirect()->route('contratos.edit', $contrato)->with('estado', count($filas).' rubros cargados desde Excel. Con cantidad mayor a 0 ya están en la última planilla para mediciones.');
     }
 
     public function eliminarRubro(Contrato $contrato, Rubro $rubro)

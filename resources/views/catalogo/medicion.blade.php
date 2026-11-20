@@ -1,5 +1,5 @@
 <div class="medicion" data-config-panel>
-    <p class="medicion-cabeza"><strong>Medición</strong> <span>La descripción siempre está. En la fórmula use los nombres, por ejemplo =altura*peso. La última columna es el total. Esta medición se copia al usarla en un contrato; cambiarla después no modifica los contratos ya hechos.</span></p>
+    <p class="medicion-cabeza"><strong>Fórmulas de medición</strong> <span>Escriba el nombre del dato (altura, base, peso…) y la fórmula con esos nombres, por ejemplo =altura*peso. La última columna con fórmula es el total. También puede dejarlo vacío y usar las fórmulas automáticas según la unidad (m, m², m³).</span></p>
     <div data-datos>
         @foreach ($medicion as $j => $dato)
             <div class="dato" data-dato>

@@ -50,7 +50,7 @@
                                 <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]" value="{{ $rubro->precio_unitario + 0 }}"></td>
                                 <td class="calc total"></td>
                                 <td class="ops">
-                                    <button type="button" class="texto" data-medicion>Medición
+                                    <button type="button" class="texto" data-medicion>Fórmulas
                                         @if (count($datosMedicion))
                                             <span class="cuenta">{{ count($datosMedicion) }}</span>
                                         @endif
@@ -74,7 +74,7 @@
                                 <td><input class="n precio" name="filas[{{ $i }}][precio_unitario]"></td>
                                 <td class="calc total"></td>
                                 <td class="ops">
-                                    <button type="button" class="texto" data-medicion>Medición</button>
+                                    <button type="button" class="texto" data-medicion>Fórmulas</button>
                                     <button class="danger" type="button" data-quitar>Quitar</button>
                                 </td>
                             </tr>
@@ -96,7 +96,7 @@
                     <td><input class="n precio" name="filas[__i__][precio_unitario]"></td>
                     <td class="calc total"></td>
                     <td class="ops">
-                        <button type="button" class="texto" data-medicion>Medición</button>
+                        <button type="button" class="texto" data-medicion>Fórmulas</button>
                         <button class="danger" type="button" data-quitar>Quitar</button>
                     </td>
                 </tr>
@@ -128,23 +128,46 @@
             <p><button type="submit">Cargar Excel</button></p>
         </form>
     </details>
+    <div class="modal-fondo" id="modal-formulas-rubro" hidden>
+        <div class="modal-formulas-rubro" role="dialog" aria-modal="true" aria-labelledby="titulo-formulas-rubro">
+            <div class="modal-cabeza">
+                <div>
+                    <h2 id="titulo-formulas-rubro">Fórmulas del rubro</h2>
+                    <p data-rubro-nombre>Configure los datos y fórmulas de medición.</p>
+                </div>
+                <button type="button" class="cerrar-modal" data-cerrar-formulas-rubro title="Cerrar">×</button>
+            </div>
+            <div class="modal-cuerpo" data-formulas-destino></div>
+            <div class="modal-pie">
+                <button type="button" class="secundario" data-cerrar-formulas-rubro>Listo</button>
+            </div>
+        </div>
+    </div>
     <style>
         .catalogo-cabeza { align-items: flex-end; margin-bottom: 8px; }
         .catalogo-cabeza p { margin: 0; color: #4a5b6d; }
         table.catalogo td.ops { padding: 4px 8px; white-space: nowrap; }
         table.catalogo button.texto { background: transparent; color: #0f3d68; padding: 4px 8px; }
         table.catalogo button.texto .cuenta { display: inline-block; min-width: 16px; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #0f3d68; color: #fff; font-size: 11px; line-height: 16px; }
-        tr[data-config].cerrada { display: none; }
-        tr[data-config] > td { background: #f7fafc; }
-        .medicion { margin: 8px; padding: 12px 14px; background: #fff; border: 1px solid #e1e8ef; border-radius: 10px; }
-        .medicion-cabeza { margin: 0 0 10px; }
+        tr[data-config] { display: none !important; }
+        .medicion { margin: 0; padding: 0; background: transparent; border: 0; }
+        .medicion-cabeza { margin: 0 0 12px; }
         .medicion-cabeza span { display: block; margin-top: 2px; color: #5c6d7e; font-size: 13px; }
         .medicion-accion { margin: 4px 0 0; }
         .dato { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(180px, 1.4fr) auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-        table.catalogo .dato input { border: 1px solid #c5d0db; border-radius: 6px; background: #fff; min-width: 0; }
+        table.catalogo .dato input, .dato input { border: 1px solid #c5d0db; border-radius: 6px; background: #fff; min-width: 0; }
         .catalogo-barra { display: flex; gap: 8px; }
         .catalogo-excel summary { cursor: pointer; font-weight: 700; }
         .catalogo-excel form { margin-top: 12px; }
+        .modal-fondo { position: fixed; inset: 0; z-index: 80; background: rgba(15, 33, 51, .48); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .modal-fondo[hidden] { display: none; }
+        .modal-formulas-rubro { width: min(720px, 100%); max-height: min(88vh, 820px); overflow: auto; background: #fff; border-radius: 14px; box-shadow: 0 18px 50px rgba(15, 33, 51, .28); border: 1px solid #d5dde5; }
+        .modal-formulas-rubro .modal-cabeza { padding: 18px 20px 12px; border-bottom: 1px solid #e7eef5; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; background: linear-gradient(180deg, #f7fafc 0%, #fff 100%); }
+        .modal-formulas-rubro .modal-cabeza h2 { margin: 0 0 4px; font-size: 18px; color: #0f3d68; }
+        .modal-formulas-rubro .modal-cabeza p { margin: 0; color: #4a5b6d; font-size: 13px; }
+        .modal-formulas-rubro .cerrar-modal { background: transparent; color: #4a5b6d; font-size: 22px; line-height: 1; padding: 4px 8px; min-width: 0; }
+        .modal-formulas-rubro .modal-cuerpo { padding: 16px 20px; }
+        .modal-formulas-rubro .modal-pie { padding: 12px 20px 18px; border-top: 1px solid #e7eef5; display: flex; justify-content: flex-end; background: #fafbfc; }
         @media (max-width: 700px) { .dato { grid-template-columns: 1fr; } }
     </style>
     <script>
@@ -162,11 +185,17 @@
             precio.addEventListener('input', pintar);
             pintar();
         };
-        tbody.querySelectorAll('tr').forEach(enlazar);
+        tbody.querySelectorAll('[data-fila]').forEach(enlazar);
+        const modalFormulas = document.getElementById('modal-formulas-rubro');
+        const destinoFormulas = modalFormulas?.querySelector('[data-formulas-destino]');
+        const nombreRubroModal = modalFormulas?.querySelector('[data-rubro-nombre]');
+        let configActiva = null;
+        const panelActivo = () => destinoFormulas?.querySelector('[data-config-panel]')
+            || configActiva?.querySelector('[data-config-panel]');
         const actualizarCuenta = (config) => {
             const boton = config?.previousElementSibling?.querySelector('[data-medicion]');
             if (!boton) return;
-            const total = config.querySelectorAll('[data-dato]').length;
+            const total = (panelActivo() || config)?.querySelectorAll('[data-dato]').length || 0;
             let cuenta = boton.querySelector('.cuenta');
             if (!total) {
                 cuenta?.remove();
@@ -179,35 +208,41 @@
             }
             cuenta.textContent = String(total);
         };
-        tbody.addEventListener('click', (evento) => {
-            const ver = evento.target.closest('[data-medicion]');
-            if (ver) {
-                const config = ver.closest('tr')?.nextElementSibling;
-                if (config?.hasAttribute('data-config')) config.classList.toggle('cerrada');
-                return;
-            }
-            const quitarDato = evento.target.closest('[data-quitar-dato]');
-            if (quitarDato) {
-                const config = quitarDato.closest('tr');
-                quitarDato.closest('[data-dato]')?.remove();
-                actualizarCuenta(config);
-                return;
-            }
-            const boton = evento.target.closest('[data-quitar]');
-            if (!boton) return;
+        const devolverFormulas = () => {
+            if (!configActiva || !destinoFormulas) return;
+            const panel = destinoFormulas.querySelector('[data-config-panel]');
+            if (panel) configActiva.querySelector('td')?.appendChild(panel);
+            configActiva = null;
+        };
+        const cerrarFormulas = () => {
+            devolverFormulas();
+            if (modalFormulas) modalFormulas.hidden = true;
+        };
+        const abrirFormulas = (boton) => {
             const fila = boton.closest('tr');
-            if (fila?.nextElementSibling?.hasAttribute('data-config')) fila.nextElementSibling.remove();
-            fila?.remove();
-        });
-        tbody.addEventListener('click', (evento) => {
-            const boton = evento.target.closest('[data-agregar-dato]');
-            if (!boton) return;
-            const config = boton.closest('tr');
+            const config = fila?.nextElementSibling;
+            const panel = config?.querySelector('[data-config-panel]');
+            if (!config || !panel || !modalFormulas || !destinoFormulas) return;
+            devolverFormulas();
+            configActiva = config;
+            const nombre = fila.querySelector('[name$="[descripcion]"]')?.value?.trim();
+            if (nombreRubroModal) {
+                nombreRubroModal.textContent = nombre
+                    ? 'Rubro: ' + nombre
+                    : 'Configure los datos y fórmulas de medición.';
+            }
+            destinoFormulas.appendChild(panel);
+            modalFormulas.hidden = false;
+            destinoFormulas.querySelector('input')?.focus();
+        };
+        const agregarDatoFormula = (boton) => {
+            const panel = boton.closest('[data-config-panel]') || panelActivo();
+            const config = configActiva || boton.closest('tr[data-config]');
             const fila = config?.previousElementSibling;
             const nombre = fila?.querySelector('[name$="[descripcion]"]')?.name || '';
             const coincidencia = nombre.match(/filas\[(\d+|__i__)\]/);
             const i = coincidencia ? coincidencia[1] : '0';
-            const lista = boton.closest('[data-config-panel]')?.querySelector('[data-datos]');
+            const lista = panel?.querySelector('[data-datos]');
             if (!lista) return;
             const j = lista.querySelectorAll('[data-dato]').length;
             const dato = document.getElementById('dato-nuevo').content.cloneNode(true).querySelector('[data-dato]');
@@ -217,6 +252,42 @@
             lista.appendChild(dato);
             actualizarCuenta(config);
             dato.querySelector('input')?.focus();
+        };
+        const quitarDatoFormula = (boton) => {
+            const config = configActiva || boton.closest('tr[data-config]');
+            boton.closest('[data-dato]')?.remove();
+            actualizarCuenta(config);
+        };
+        document.querySelectorAll('[data-cerrar-formulas-rubro]').forEach((boton) => {
+            boton.addEventListener('click', cerrarFormulas);
+        });
+        modalFormulas?.addEventListener('click', (evento) => {
+            if (evento.target === modalFormulas) {
+                cerrarFormulas();
+                return;
+            }
+            const quitarDato = evento.target.closest('[data-quitar-dato]');
+            if (quitarDato) {
+                quitarDatoFormula(quitarDato);
+                return;
+            }
+            const agregarDato = evento.target.closest('[data-agregar-dato]');
+            if (agregarDato) agregarDatoFormula(agregarDato);
+        });
+        document.addEventListener('keydown', (evento) => {
+            if (evento.key === 'Escape' && modalFormulas && !modalFormulas.hidden) cerrarFormulas();
+        });
+        tbody.addEventListener('click', (evento) => {
+            const ver = evento.target.closest('[data-medicion]');
+            if (ver) {
+                abrirFormulas(ver);
+                return;
+            }
+            const boton = evento.target.closest('[data-quitar]');
+            if (!boton) return;
+            const fila = boton.closest('tr');
+            if (fila?.nextElementSibling?.hasAttribute('data-config')) fila.nextElementSibling.remove();
+            fila?.remove();
         });
         const indices = [...document.querySelectorAll('[name^="filas["]')].map((campo) => {
             const coincidencia = campo.name.match(/filas\[(\d+)\]/);

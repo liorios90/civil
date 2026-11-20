@@ -66,7 +66,7 @@
         table.hoja[data-hoja] { width: max-content; min-width: 100%; table-layout: fixed; }
         table.hoja[data-hoja] th { color: #fff; vertical-align: bottom; min-width: 88px; max-width: 160px; }
         table.hoja[data-hoja] th[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
-        table.hoja[data-hoja] td { min-width: 88px; max-width: 160px; }
+        table.hoja[data-hoja] td { min-width: 88px; max-width: 160px; padding: 0; height: 38px; vertical-align: middle; }
         table.hoja[data-hoja] td[data-clave="descripcion"] { min-width: 160px; max-width: 280px; }
         table.hoja[data-hoja] th.grupo { letter-spacing: .04em; font-size: 12px; }
         table.hoja[data-hoja] thead tr:nth-child(2) th { font-size: 11px; font-weight: 600; }
@@ -90,7 +90,25 @@
         table.hoja[data-hoja] td.fila-marca button.quitar-fila { background: transparent; color: #9b1c1c; padding: 0 4px; min-width: 0; font-size: 16px; line-height: 1; }
         table.hoja[data-hoja] td input.celda,
         table.hoja[data-hoja] td input.n,
-        table.hoja[data-hoja] td input { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 6px 4px; }
+        table.hoja[data-hoja] td input:not([type="hidden"]) {
+            display: block;
+            width: 100%;
+            height: 100%;
+            min-width: 0;
+            min-height: 38px;
+            max-width: none;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 8px 6px;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+        table.hoja[data-hoja] td input:not([type="hidden"]):focus {
+            outline: none;
+            background: #fff;
+        }
         table.hoja[data-hoja] input.celda.malo { color: #9b1c1c; background: #fdecec; }
         table.hoja[data-hoja] td.activa { outline: 2px solid #1d6f42; outline-offset: -2px; }
         table.hoja[data-hoja] td.con-formula { background: #eef6ea; }
@@ -127,17 +145,48 @@
         .modal-formulas .modal-pie { padding: 12px 20px 18px; border-top: 1px solid #e7eef5; display: flex; justify-content: flex-end; gap: 8px; background: #fafbfc; }
         .total-tablas { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 16px; padding: 14px 16px; background: #0f3d68; color: #fff; border-radius: 8px; }
         .total-tablas b { font-size: 22px; }
+        .panel-formulas { margin: 0 0 16px; padding: 14px 16px; background: #fff; border: 1px solid #d5dde5; border-radius: 8px; }
+        .panel-formulas h2 { margin: 0 0 6px; font-size: 16px; color: #0f3d68; }
+        .panel-formulas > p { margin: 0 0 12px; color: #4a5b6d; font-size: 13px; }
+        .panel-formulas ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+        .panel-formulas li { display: grid; grid-template-columns: minmax(90px, 140px) 1fr; gap: 8px 14px; align-items: baseline; padding: 8px 10px; background: #f4f7fa; border-radius: 6px; }
+        .panel-formulas li strong { color: #0f3d68; }
+        .panel-formulas li span { font-family: Consolas, "Courier New", monospace; font-size: 13px; color: #1f4e79; }
     </style>
 
     @php
         $tipoMedicion = \App\Services\UnidadMedicion::tipo($ejecucion->rubro->unidad);
         $explicaMedicion = \App\Services\UnidadMedicion::explica($tipoMedicion);
         $plantillaMedicion = \App\Services\HojaCalculo::plantillaPara($ejecucion->rubro);
+        $resumenFormulas = $plantillaMedicion !== []
+            ? collect($plantillaMedicion)
+                ->filter(fn ($columna) => ($columna['clave'] ?? '') !== 'descripcion')
+                ->map(fn ($columna) => [
+                    'titulo' => $columna['etiqueta'] ?? $columna['clave'],
+                    'texto' => trim((string) ($columna['formula'] ?? '')) !== ''
+                        ? $columna['formula']
+                        : 'Se escribe a mano',
+                ])
+                ->values()
+                ->all()
+            : \App\Services\UnidadMedicion::resumenFormulas($tipoMedicion);
     @endphp
+    <div class="panel-formulas">
+        <h2>Fórmulas de este rubro</h2>
+        <p>{{ $explicaMedicion }} Unidad: <b>{{ $ejecucion->rubro->unidad }}</b>. Puede cambiarlas con el botón «Ver / cambiar fórmulas» de cada tabla y luego Guardar mediciones.</p>
+        <ul>
+            @foreach ($resumenFormulas as $formula)
+                <li>
+                    <strong>{{ $formula['titulo'] }}</strong>
+                    <span>{{ $formula['texto'] }}</span>
+                </li>
+            @endforeach
+        </ul>
+    </div>
     <form method="post" action="{{ route('anexos.guardar', $ejecucion) }}">
         @csrf
         <fieldset @disabled(! $periodoAbierto) style="border:0;margin:0;padding:0">
-        <p>{{ $explicaMedicion }} Puede cambiar el título de cada columna, insertar o quitar columnas y filas. Longitud, área, volumen y total se calculan mientras conserven esa columna. La suma de la última columna de todas las tablas es la cantidad que pasa al frente.</p>
+        <p>Las columnas salen según la unidad del rubro. Puede cambiar títulos e insertar o quitar columnas y filas. Al guardar mediciones se conservan también las fórmulas de esta hoja. La suma de la última columna de todas las tablas es la cantidad que pasa al frente.</p>
         @foreach ($anexos as $tablaMedicion)
             @include('anexos.tabla', [
                 'anexo' => $tablaMedicion,

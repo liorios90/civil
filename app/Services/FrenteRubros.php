@@ -6,13 +6,14 @@ use App\Models\Contrato;
 use App\Models\Frente;
 use App\Models\PlanillaRubro;
 use App\Models\Rubro;
+use Illuminate\Support\Collection;
 
 class FrenteRubros
 {
     /**
      * @param  array<int, array<string, mixed>>  $filas
      */
-    public function aplicarCatalogo(Contrato $contrato, array $filas, bool $reemplazarEnFrentes): void
+    public function aplicarCatalogo(Contrato $contrato, array $filas, bool $reemplazarEnFrentes, bool $soloUltimaPlanilla = false): void
     {
         $catalogo = $this->asegurarCatalogo($contrato);
         $siguente = (int) $catalogo->rubros()->max('numero');
@@ -52,7 +53,11 @@ class FrenteRubros
             ->values();
         $numerosPlanilla = $paraPlanillas->pluck('numero')->all();
 
-        foreach ($contrato->frentes as $frente) {
+        $frentes = $soloUltimaPlanilla
+            ? $contrato->frentes()->reorder()->orderByDesc('orden')->orderByDesc('id')->limit(1)->get()
+            : $contrato->frentes;
+
+        foreach ($frentes as $frente) {
             foreach ($paraPlanillas as $rubro) {
                 $copia = $frente->rubros()->updateOrCreate(
                     ['numero' => $rubro->numero],
@@ -75,10 +80,12 @@ class FrenteRubros
                 }
             }
 
-            $sobrantes = $numerosPlanilla === []
-                ? $frente->rubros()
-                : $frente->rubros()->whereNotIn('numero', $numerosPlanilla);
-            $sobrantes->get()->each->delete();
+            if (! $soloUltimaPlanilla) {
+                $sobrantes = $numerosPlanilla === []
+                    ? $frente->rubros()
+                    : $frente->rubros()->whereNotIn('numero', $numerosPlanilla);
+                $sobrantes->get()->each->delete();
+            }
         }
     }
 
@@ -306,6 +313,7 @@ class FrenteRubros
                     'cantidad_anterior' => $valor,
                     'cantidad_actual' => 0,
                 ]);
+
                 continue;
             }
             if (round((float) $fila->cantidad_anterior, 2) !== $valor) {
@@ -363,7 +371,7 @@ class FrenteRubros
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Frente>
+     * @return Collection<int, Frente>
      */
     private function otrosFrentes(Frente $frente)
     {
